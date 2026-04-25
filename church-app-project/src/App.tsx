@@ -1,16 +1,7 @@
-function App() {
+import Home from './pages/Home'
 
-  return (
-    <>
-      <section>
-        <div>
-          <h1>
-            Home
-          </h1>
-        </div>
-      </section>
-    </>
-  )
+function App() {
+  return <Home />
 }
 
 export default App
