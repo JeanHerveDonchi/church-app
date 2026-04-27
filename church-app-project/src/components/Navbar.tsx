@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import {
+  getAvatarSrc,
+  PROFILE_AVATAR_UPDATED_EVENT,
+} from '../features/profile/profile'
 import { useAuth } from '../providers/authProvider'
 import { supabase } from '../providers/supabaseClient'
 
@@ -15,7 +20,10 @@ type MenuAction = {
 export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
   const { loading, role, user } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -43,6 +51,58 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
     }
   }, [isMenuOpen])
 
+  useEffect(() => {
+    if (!user?.id) {
+      return
+    }
+
+    let isCurrent = true
+
+    const loadAvatar = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!isCurrent) {
+        return
+      }
+
+      if (error) {
+        console.error('Error loading navbar avatar:', error)
+        return
+      }
+
+      setAvatarUrl(data?.avatar_url ?? null)
+    }
+
+    void loadAvatar()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [location.pathname, user?.id])
+
+  useEffect(() => {
+    const handleAvatarUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatarUrl: string | null }>).detail
+      setAvatarUrl(detail?.avatarUrl ?? null)
+    }
+
+    window.addEventListener(
+      PROFILE_AVATAR_UPDATED_EVENT,
+      handleAvatarUpdated as EventListener,
+    )
+
+    return () => {
+      window.removeEventListener(
+        PROFILE_AVATAR_UPDATED_EVENT,
+        handleAvatarUpdated as EventListener,
+      )
+    }
+  }, [])
+
   const closeMenu = () => {
     setIsMenuOpen(false)
   }
@@ -56,12 +116,20 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
     closeMenu()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}${location.pathname}`,
+      },
     })
   }
 
   const handleLogout = async () => {
     closeMenu()
     await supabase.auth.signOut()
+  }
+
+  const handleAccountNavigation = () => {
+    closeMenu()
+    navigate('/profile')
   }
 
   const actions: MenuAction[] = []
@@ -80,7 +148,7 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
   } else {
     actions.push({
       label: 'Mon compte',
-      onClick: handlePlaceholderAction('Mon compte'),
+      onClick: handleAccountNavigation,
     })
 
     if (role === 'admin' || role === 'super_admin') {
@@ -123,6 +191,13 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
           onClick={() => setIsMenuOpen((open) => !open)}
           type="button"
         >
+          {user ? (
+            <img
+              alt="Votre avatar"
+              className="h-8 w-8 rounded-full border border-stone-300 object-cover bg-stone-100"
+              src={getAvatarSrc(avatarUrl)}
+            />
+          ) : null}
           <span>Actions</span>
           <span aria-hidden="true" className="text-xs">
             v
