@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   getAvatarSrc,
   PROFILE_AVATAR_UPDATED_EVENT,
@@ -178,29 +178,48 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
   }
 
   return (
-    <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 pb-4 pt-4 sm:px-6 lg:px-8">
-      <p className="font-serif text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">
+    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 pb-4 pt-4 sm:px-6 lg:px-8">
+      <Link
+        className="min-w-0 font-serif text-xl font-semibold tracking-tight text-stone-950 transition hover:text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-300 min-[428px]:text-2xl sm:text-3xl"
+        to="/"
+      >
         {title}
-      </p>
+      </Link>
 
-      <div className="relative" ref={menuRef}>
+      <div className="relative shrink-0" ref={menuRef}>
         <button
           aria-expanded={isMenuOpen}
           aria-haspopup="menu"
-          className="inline-flex min-w-28 items-center justify-between gap-3 rounded-full border border-stone-300 bg-white/90 px-4 py-2.5 text-sm font-medium text-stone-950 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-300"
+          className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-stone-300 bg-white/90 px-3 py-2 text-[13px] font-medium text-stone-950 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-950 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-300 min-[428px]:min-w-28 min-[428px]:justify-between min-[428px]:gap-3 min-[428px]:px-4 min-[428px]:py-2.5 min-[428px]:text-sm"
           onClick={() => setIsMenuOpen((open) => !open)}
           type="button"
         >
           {user ? (
             <img
               alt="Votre avatar"
-              className="h-8 w-8 rounded-full border border-stone-300 object-cover bg-stone-100"
+              className="h-7 w-7 shrink-0 rounded-full border border-stone-300 bg-stone-100 object-cover min-[428px]:h-8 min-[428px]:w-8"
               src={getAvatarSrc(avatarUrl)}
             />
           ) : null}
-          <span>Actions</span>
-          <span aria-hidden="true" className="text-xs">
-            v
+          <span className="leading-none">Actions</span>
+          <span
+            aria-hidden="true"
+            className="flex h-3 w-3 shrink-0 items-center justify-center text-stone-700"
+          >
+            <svg
+              className="h-2.5 w-2.5 min-[428px]:h-3 min-[428px]:w-3"
+              fill="none"
+              viewBox="0 0 12 12"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M3 4.5L6 7.5L9 4.5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+              />
+            </svg>
           </span>
         </button>
 

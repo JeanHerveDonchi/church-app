@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { AvatarPicker } from '../components/AvatarPicker'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Footer } from '../components/Footer'
 import { Navbar } from '../components/Navbar'
 import {
@@ -12,6 +13,8 @@ import {
 } from '../features/profile/profile'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { useAuth } from '../providers/authProvider'
+import { supabase } from '../providers/supabaseClient'
+import { deleteAccount as deleteAccountService } from '../services/delete/deleteAccount'
 
 type SectionMessage = {
   kind: 'error' | 'success'
@@ -96,8 +99,6 @@ function Profile() {
   const navigate = useNavigate()
   const { loading: authLoading, user } = useAuth()
   const {
-    deleteAccount,
-    deletingAccount,
     error,
     loading,
     postCount,
@@ -111,6 +112,8 @@ function Profile() {
   const [nameMessage, setNameMessage] = useState<SectionMessage | null>(null)
   const [avatarMessage, setAvatarMessage] = useState<SectionMessage | null>(null)
   const [deleteMessage, setDeleteMessage] = useState<SectionMessage | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
   const fullNameInput = fullNameDraft ?? profile?.full_name ?? ''
   const fullNameValidationError = validateFullName(fullNameInput)
@@ -197,26 +200,33 @@ function Profile() {
 
   const handleDeleteAccount = async () => {
     setDeleteMessage(null)
+    setIsDeletingAccount(true)
 
-    const confirmed = window.confirm(
-      'Voulez-vous vraiment supprimer votre compte ? Cette action est définitive.',
-    )
+    try {
+      const wasDeleted = await deleteAccountService()
 
-    if (!confirmed) {
-      return
-    }
+      if (!wasDeleted) {
+        setIsDeleteDialogOpen(false)
+        setDeleteMessage({
+          kind: 'error',
+          text: 'Impossible de supprimer votre compte pour le moment.',
+        })
+        return
+      }
 
-    const result = await deleteAccount()
+      const { error: signOutError } = await supabase.auth.signOut({
+        scope: 'local',
+      })
 
-    if (result.ok) {
+      if (signOutError) {
+        console.error('Error signing out after account deletion:', signOutError)
+      }
+
+      setIsDeleteDialogOpen(false)
       navigate('/', { replace: true })
-      return
+    } finally {
+      setIsDeletingAccount(false)
     }
-
-    setDeleteMessage({
-      kind: 'error',
-      text: result.message,
-    })
   }
 
   return (
@@ -391,13 +401,14 @@ function Profile() {
                 <div className="space-y-4">
                   <button
                     className="inline-flex items-center justify-center rounded-full border border-stone-950 bg-white px-5 py-3 text-sm font-medium text-stone-950 transition hover:-translate-y-0.5 hover:bg-stone-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={deletingAccount}
+                    disabled={isDeletingAccount}
                     onClick={() => {
-                      void handleDeleteAccount()
+                      setDeleteMessage(null)
+                      setIsDeleteDialogOpen(true)
                     }}
                     type="button"
                   >
-                    {deletingAccount
+                    {isDeletingAccount
                       ? 'Suppression en cours...'
                       : 'Supprimer mon compte'}
                   </button>
@@ -411,6 +422,18 @@ function Profile() {
           ) : null}
         </section>
       </main>
+
+      <ConfirmDialog
+        confirmText="Supprimer"
+        description="Cette action est irréversible."
+        loading={isDeletingAccount}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false)
+        }}
+        onConfirm={handleDeleteAccount}
+        open={isDeleteDialogOpen}
+        title="Supprimer mon compte"
+      />
 
       <Footer />
     </div>

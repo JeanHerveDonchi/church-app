@@ -48,7 +48,6 @@ export const useMyProfile = () => {
   const [error, setError] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [savingAvatar, setSavingAvatar] = useState(false)
-  const [deletingAccount, setDeletingAccount] = useState(false)
   const activeRequestIdRef = useRef(0)
 
   const assignRandomAvatar = useCallback(
@@ -248,53 +247,7 @@ export const useMyProfile = () => {
     [profile?.avatar_url, updateProfile],
   )
 
-  const deleteAccount = useCallback(async () => {
-    if (!user) {
-      return {
-        message: 'Vous devez etre connecte pour supprimer votre compte.',
-        ok: false,
-      } satisfies MutationResult
-    }
-
-    setDeletingAccount(true)
-
-    try {
-      const { error: deleteError } = await supabase.rpc('delete_my_account')
-
-      if (deleteError) {
-        return {
-          message: getErrorMessage(
-            deleteError,
-            'Impossible de supprimer votre compte.',
-          ),
-          ok: false,
-        } satisfies MutationResult
-      }
-
-      const { error: signOutError } = await supabase.auth.signOut()
-
-      if (signOutError) {
-        return {
-          message: getErrorMessage(
-            signOutError,
-            'Le compte a ete supprime, mais la deconnexion a echoue.',
-          ),
-          ok: false,
-        } satisfies MutationResult
-      }
-
-      return {
-        message: 'Compte supprime.',
-        ok: true,
-      } satisfies MutationResult
-    } finally {
-      setDeletingAccount(false)
-    }
-  }, [user])
-
   return {
-    deleteAccount,
-    deletingAccount,
     error,
     loading,
     postCount,
