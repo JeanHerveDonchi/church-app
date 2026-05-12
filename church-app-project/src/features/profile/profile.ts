@@ -8,6 +8,7 @@ export const AVATAR_OPTIONS = [
   'panda.png',
   'rabbit.png',
   'weasel.png',
+  'default.png'
 ] as const
 
 export type AvatarName = (typeof AVATAR_OPTIONS)[number]
@@ -20,7 +21,7 @@ export type ProfileRecord = {
   id: string
 }
 
-export const DEFAULT_AVATAR: AvatarName = 'panda.png'
+export const DEFAULT_AVATAR: AvatarName = 'default.png'
 export const PROFILE_FIELDS = 'id, email, full_name, avatar_url, created_at'
 export const PROFILE_AVATAR_UPDATED_EVENT = 'profile-avatar-updated'
 

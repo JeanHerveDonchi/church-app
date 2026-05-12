@@ -21,7 +21,9 @@ export function AvatarPicker({
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {AVATAR_OPTIONS.map((avatar) => {
+      {AVATAR_OPTIONS
+      .filter((a) => a !== "default.png")
+      .map((avatar) => {
         const isActive = activeAvatar === avatar
 
         return (

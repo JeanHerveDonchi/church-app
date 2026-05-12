@@ -14,7 +14,7 @@ import {
 import { useMyProfile } from '../hooks/useMyProfile'
 import { useAuth } from '../providers/authProvider'
 import { supabase } from '../providers/supabaseClient'
-import { deleteAccount as deleteAccountService } from '../services/delete/deleteAccount'
+import { deleteAccount as deleteAccountService } from '../services/delete/accounts/delete.service'
 
 type SectionMessage = {
   kind: 'error' | 'success'
@@ -242,7 +242,7 @@ function Profile() {
               </h1>
               <p className="max-w-2xl text-sm text-stone-500 sm:text-base">
                 Retrouvez vos informations de profil, votre avatar et les
-                details de votre compte.
+                détails de votre compte.
               </p>
             </div>
 

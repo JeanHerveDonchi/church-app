@@ -1,4 +1,4 @@
-import { supabase } from '../../providers/supabaseClient'
+import { supabase } from '../../../providers/supabaseClient'
 
 export async function deleteAccount(targetUserId?: string): Promise<boolean> {
   const { error } = await supabase.rpc('delete_account', {

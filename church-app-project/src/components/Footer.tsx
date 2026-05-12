@@ -24,7 +24,7 @@ export function Footer() {
         </a>
       </nav>
 
-      <p>© DonchiHerve</p>
+      <p>©THC</p>
     </footer>
   )
 }

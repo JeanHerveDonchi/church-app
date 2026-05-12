@@ -11,8 +11,6 @@ type ConfirmDialogProps = {
   onCancel: () => void
 }
 
-const CLOSE_TRANSITION_MS = 180
-
 export function ConfirmDialog({
   open,
   title,
@@ -24,40 +22,12 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
-  const [isMounted, setIsMounted] = useState(open)
-  const [isVisible, setIsVisible] = useState(open)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isBusy = loading || isSubmitting
 
   useEffect(() => {
-    if (open) {
-      setIsMounted(true)
-
-      const animationFrameId = window.requestAnimationFrame(() => {
-        setIsVisible(true)
-      })
-
-      return () => window.cancelAnimationFrame(animationFrameId)
-    }
-
-    setIsVisible(false)
-  }, [open])
-
-  useEffect(() => {
-    if (open || !isMounted) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setIsMounted(false)
-    }, CLOSE_TRANSITION_MS)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [isMounted, open])
-
-  useEffect(() => {
-    if (!isMounted) {
+    if (!open) {
       return
     }
 
@@ -67,10 +37,10 @@ export function ConfirmDialog({
     return () => {
       document.body.style.overflow = previousOverflow
     }
-  }, [isMounted])
+  }, [open])
 
   useEffect(() => {
-    if (!isMounted) {
+    if (!open) {
       return
     }
 
@@ -83,9 +53,9 @@ export function ConfirmDialog({
     window.addEventListener('keydown', handleKeyDown)
 
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isBusy, isMounted, onCancel])
+  }, [isBusy, onCancel, open])
 
-  if (!isMounted) {
+  if (!open) {
     return null
   }
 
@@ -107,9 +77,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 pt-10 transition-opacity duration-200 sm:items-center sm:px-6 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 pt-10 sm:items-center sm:px-6"
     >
       <button
         aria-label="Fermer la fenêtre de confirmation"
@@ -123,11 +91,7 @@ export function ConfirmDialog({
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`relative w-full max-w-md rounded-[2rem] border border-stone-200 bg-white p-5 shadow-[0_28px_80px_rgba(17,17,17,0.24)] transition duration-200 sm:p-6 ${
-          isVisible
-            ? 'translate-y-0 opacity-100'
-            : 'translate-y-4 opacity-0 sm:translate-y-2'
-        }`}
+        className="relative w-full max-w-md rounded-[2rem] border border-stone-200 bg-white p-5 shadow-[0_28px_80px_rgba(17,17,17,0.24)] sm:p-6"
         role="dialog"
       >
         <div className="space-y-2">

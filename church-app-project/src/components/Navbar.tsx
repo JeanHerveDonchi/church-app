@@ -4,6 +4,7 @@ import {
   getAvatarSrc,
   PROFILE_AVATAR_UPDATED_EVENT,
 } from '../features/profile/profile'
+import { getUserPostsRoute } from '../features/posts/post'
 import { useAuth } from '../providers/authProvider'
 import { supabase } from '../providers/supabaseClient'
 
@@ -17,7 +18,7 @@ type MenuAction = {
   onClick: () => void | Promise<void>
 }
 
-export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
+export function Navbar({ title = 'THC Global' }: NavbarProps) {
   const { loading, role, user } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -155,11 +156,17 @@ export function Navbar({ title = "Bibliotheque de l'eglise" }: NavbarProps) {
       actions.push(
         {
           label: 'Creer une publication',
-          onClick: handlePlaceholderAction('Creer une publication'),
+          onClick: () => {
+            closeMenu()
+            navigate('/posts/create')
+          },
         },
         {
           label: 'Gerer mes publications',
-          onClick: handlePlaceholderAction('Gerer mes publications'),
+          onClick: () => {
+            closeMenu();
+            navigate(getUserPostsRoute(user.id))
+          },
         },
       )
     }
