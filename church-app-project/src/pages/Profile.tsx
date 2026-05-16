@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AvatarPicker } from '../components/AvatarPicker'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Footer } from '../components/Footer'
 import { Navbar } from '../components/Navbar'
+import { buildAuthPath } from '../features/auth/auth'
 import {
   formatMemberSince,
   getAvatarSrc,
@@ -25,6 +26,33 @@ type SectionCardProps = {
   children: ReactNode
   description?: string
   title: string
+}
+
+const getRoleMeta = (role: 'user' | 'admin' | 'super_admin' | null) => {
+  if (role === 'super_admin') {
+    return {
+      badgeClassName:
+        'border-stone-950/10 bg-stone-950 text-white shadow-[0_10px_24px_rgba(17,17,17,0.16)]',
+      description: 'Acces complet aux outils de gestion et a la configuration.',
+      label: 'Super administrateur',
+    }
+  }
+
+  if (role === 'admin') {
+    return {
+      badgeClassName:
+        'border-amber-200 bg-amber-50 text-amber-900 shadow-[0_10px_24px_rgba(180,83,9,0.14)]',
+      description: 'Peut publier et gerer le contenu de la communaute.',
+      label: 'Administrateur',
+    }
+  }
+
+  return {
+    badgeClassName:
+      'border-stone-200 bg-white text-stone-700 shadow-[0_10px_24px_rgba(120,113,108,0.08)]',
+    description: 'Compte membre actif sur la plateforme.',
+    label: 'Membre',
+  }
 }
 
 function SectionCard({ children, description, title }: SectionCardProps) {
@@ -51,11 +79,10 @@ function SectionFeedback({ message }: { message: SectionMessage | null }) {
 
   return (
     <p
-      className={`rounded-2xl border px-4 py-3 text-sm ${
-        message.kind === 'error'
+      className={`rounded-2xl border px-4 py-3 text-sm ${message.kind === 'error'
           ? 'border-stone-950 bg-stone-100 text-stone-950'
           : 'border-stone-300 bg-white text-stone-700'
-      }`}
+        }`}
     >
       {message.text}
     </p>
@@ -97,7 +124,8 @@ function ProfileLoadingState() {
 
 function Profile() {
   const navigate = useNavigate()
-  const { loading: authLoading, user } = useAuth()
+  const location = useLocation()
+  const { loading: authLoading, role, user } = useAuth()
   const {
     error,
     loading,
@@ -114,11 +142,15 @@ function Profile() {
   const [deleteMessage, setDeleteMessage] = useState<SectionMessage | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
-
   const fullNameInput = fullNameDraft ?? profile?.full_name ?? ''
   const fullNameValidationError = validateFullName(fullNameInput)
   const normalizedFullName = normalizeFullName(fullNameInput)
   const isNameUnchanged = normalizedFullName === (profile?.full_name ?? null)
+  const roleMeta = getRoleMeta(role)
+  const loginPath = buildAuthPath(
+    '/login',
+    `${location.pathname}${location.search}${location.hash}`,
+  )
 
   useEffect(() => {
     if (nameMessage?.kind !== 'success') {
@@ -168,7 +200,7 @@ function Profile() {
   }
 
   if (!user) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to={loginPath} />
   }
 
   const handleFullNameSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -253,6 +285,14 @@ function Profile() {
               <p className="mt-1 font-medium text-stone-950">
                 {profile?.email ?? user.email}
               </p>
+              <div className="mt-3 space-y-2">
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${roleMeta.badgeClassName}`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                  <span>{roleMeta.label}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -294,11 +334,10 @@ function Profile() {
                         Nom complet
                       </span>
                       <input
-                        className={`w-full rounded-2xl border bg-white px-4 py-3 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 focus:bg-white ${
-                          fullNameValidationError
+                        className={`w-full rounded-2xl border bg-white px-4 py-3 text-sm text-stone-950 outline-none transition placeholder:text-stone-400 focus:bg-white ${fullNameValidationError
                             ? 'border-stone-950'
                             : 'border-stone-300 focus:border-stone-950'
-                        }`}
+                          }`}
                         maxLength={100}
                         onChange={(event) => {
                           setFullNameDraft(event.target.value)

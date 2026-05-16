@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { buildAuthPath } from '@/features/auth/auth'
 import { Footer } from '@/components/Footer'
 import { Navbar } from '@/components/Navbar'
 import { PostCard } from '@/components/posts/PostCard'
@@ -12,6 +13,7 @@ import {
 } from '@/features/posts/post'
 import { useDeletePost } from '@/hooks/useDeletePost'
 import { usePosts } from '@/hooks/usePosts'
+import { useRequireFullName } from '@/hooks/useRequireFullName'
 import { useAuth } from '@/providers/authProvider'
 import type { TypedPost } from '@/types/post.types'
 
@@ -41,9 +43,12 @@ function FeedSkeleton() {
 
 function PostFeed() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { userId } = useParams<{ userId: string }>()
   const { loading: authLoading, role, user } = useAuth()
+  const { dialogProps: fullNameDialogProps, requireFullName } =
+    useRequireFullName()
   const activeUserId = user?.id ?? ''
   const { data, error, isLoading } = usePosts(activeUserId)
   const deletePost = useDeletePost()
@@ -52,9 +57,13 @@ function PostFeed() {
     null,
   )
   const canManagePosts = role === 'admin' || role === 'super_admin'
+  const loginPath = buildAuthPath(
+    '/login',
+    `${location.pathname}${location.search}${location.hash}`,
+  )
 
   if (!authLoading && !user) {
-    return <Navigate replace to="/" />
+    return <Navigate replace to={loginPath} />
   }
 
   if (!authLoading && user && (!userId || userId !== user.id)) {
@@ -101,6 +110,20 @@ function PostFeed() {
     }
   }
 
+  const handleCreatePost = async () => {
+    if (!user) {
+      navigate(buildAuthPath('/login', '/posts/create'))
+      return
+    }
+
+    await requireFullName({
+      onContinue: async () => {
+        navigate('/posts/create')
+      },
+      title: 'Ajoutez votre nom pour publier un post',
+    })
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -122,7 +145,9 @@ function PostFeed() {
               {canManagePosts ? (
                 <button
                   className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-950 bg-stone-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
-                  onClick={() => navigate('/posts/create')}
+                  onClick={() => {
+                    void handleCreatePost()
+                  }}
                   type="button"
                 >
                   Creer une nouvelle publication
@@ -191,6 +216,10 @@ function PostFeed() {
       </main>
 
       <Footer />
+
+      <ConfirmDialog
+        {...fullNameDialogProps}
+      />
 
       <ConfirmDialog
         confirmText="Supprimer la publication"

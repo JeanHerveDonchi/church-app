@@ -10,7 +10,7 @@ export const useAddComment = () => {
   return useMutation({
     mutationFn: async (payload: CreateCommentPayload) => {
       if (!user) {
-        throw new Error('You must be signed in to comment.')
+        throw new Error('Vous devez etre connecte pour commenter.')
       }
 
       return commentsService.create(payload, user.id)

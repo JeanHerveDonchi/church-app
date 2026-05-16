@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Link, useLocation } from 'react-router-dom'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { getAvatarSrc } from '@/features/profile/profile'
+import { buildAuthPath } from '@/features/auth/auth'
+import { getAvatarSrc, normalizeFullName } from '@/features/profile/profile'
 import {
   getAuthorName,
   getErrorMessage,
@@ -11,12 +14,38 @@ import {
 import { useAddComment } from '@/hooks/useAddComment'
 import { useComments } from '@/hooks/useComments'
 import { useDeleteComment } from '@/hooks/useDeleteComment'
+import { useRequireFullName } from '@/hooks/useRequireFullName'
 import { useAuth } from '@/providers/authProvider'
 import type { Comment } from '@/types/post.types'
 
 type CommentSectionProps = {
   postId: string
 }
+
+const createOptimisticComment = ({
+  authorAvatarUrl,
+  authorFullName,
+  content,
+  postId,
+  userId,
+}: {
+  authorAvatarUrl: string | null
+  authorFullName: string
+  content: string
+  postId: string
+  userId: string
+}): Comment => ({
+  id: `optimistic-${Date.now()}`,
+  post_id: postId,
+  content,
+  created_at: new Date().toISOString(),
+  author: {
+    id: userId,
+    email: null,
+    full_name: authorFullName,
+    avatar_url: authorAvatarUrl,
+  },
+})
 
 function CommentSkeleton() {
   return (
@@ -43,7 +72,10 @@ function CommentSkeleton() {
 
 export function CommentSection({ postId }: CommentSectionProps) {
   const queryClient = useQueryClient()
+  const location = useLocation()
   const { user } = useAuth()
+  const { dialogProps: fullNameDialogProps, profile, requireFullName } =
+    useRequireFullName()
   const addComment = useAddComment()
   const deleteComment = useDeleteComment()
   const { data, error, isLoading } = useComments(postId)
@@ -53,16 +85,37 @@ export function CommentSection({ postId }: CommentSectionProps) {
     null,
   )
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null)
+  const loginPath = buildAuthPath(
+    '/login',
+    `${location.pathname}${location.search}${location.hash}`,
+  )
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (fullNameOverride?: string | null) => {
     if (!user) {
       return
     }
 
     const normalizedContent = normalizeOptionalText(draft)
+    const authorFullName = normalizeFullName(
+      fullNameOverride ??
+        profile?.full_name ??
+        (typeof user.user_metadata.full_name === 'string'
+          ? user.user_metadata.full_name
+          : ''),
+    )
 
     if (!normalizedContent) {
       setErrorMessage('Ajoutez un commentaire avant de publier.')
+      return
+    }
+
+    if (!authorFullName) {
+      await requireFullName({
+        onContinue: async (nextProfile) => {
+          await handleSubmit(nextProfile?.full_name ?? null)
+        },
+        title: 'Ajoutez votre nom pour commenter',
+      })
       return
     }
 
@@ -74,24 +127,17 @@ export function CommentSection({ postId }: CommentSectionProps) {
     const previousComments =
       queryClient.getQueryData<Comment[]>(['comments', postId]) ?? []
 
-    const optimisticComment: Comment = {
-      id: `optimistic-${Date.now()}`,
-      post_id: postId,
+    const optimisticComment = createOptimisticComment({
+      authorAvatarUrl:
+        profile?.avatar_url ??
+        (typeof user.user_metadata.avatar_url === 'string'
+          ? user.user_metadata.avatar_url
+          : null),
+      authorFullName,
       content: normalizedContent,
-      created_at: new Date().toISOString(),
-      author: {
-        id: user.id,
-        email: user.email ?? null,
-        full_name:
-          typeof user.user_metadata.full_name === 'string'
-            ? user.user_metadata.full_name
-            : user.email ?? null,
-        avatar_url:
-          typeof user.user_metadata.avatar_url === 'string'
-            ? user.user_metadata.avatar_url
-            : null,
-      },
-    }
+      postId,
+      userId: user.id,
+    })
 
     queryClient.setQueryData<Comment[]>(
       ['comments', postId],
@@ -215,25 +261,25 @@ export function CommentSection({ postId }: CommentSectionProps) {
                         <p className="text-xs uppercase tracking-[0.14em] text-stone-500">
                           {getRelativeDateLabel(comment.created_at)}
                         </p>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-700">
-                        {comment.content}
-                      </p>
 
-                      {isOwnComment ? (
-                        <div className="mt-3">
+                        {isOwnComment ? (
                           <button
-                            className="inline-flex min-h-10 items-center justify-center rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-950 transition hover:-translate-y-0.5 hover:border-stone-950"
+                            aria-label="Supprimer le commentaire"
+                            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-950 transition hover:-translate-y-0.5 hover:border-stone-950 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-300"
                             onClick={() => {
                               setDeleteErrorMessage(null)
                               setCommentToDelete(comment)
                             }}
+                            title="Supprimer le commentaire"
                             type="button"
                           >
-                            Supprimer le commentaire
+                            <Trash2 className="h-4 w-4" strokeWidth={1.8} />
                           </button>
-                        </div>
-                      ) : null}
+                        ) : null}
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-700">
+                        {comment.content}
+                      </p>
                     </div>
                   </div>
                 </article>
@@ -271,20 +317,27 @@ export function CommentSection({ postId }: CommentSectionProps) {
                 {addComment.isPending ? (
                   <>
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
-                    Publication...
+                    Envoi...
                   </>
                 ) : (
-                  'Publier le commentaire'
+                  'Commenter'
                 )}
               </button>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-sm text-stone-600">
-            Connectez-vous pour commenter
+          <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-stone-950 bg-stone-950 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800"
+              to={loginPath}
+            >
+              Se connecter pour commenter
+            </Link>
           </div>
         )}
       </div>
+
+      <ConfirmDialog {...fullNameDialogProps} />
 
       <ConfirmDialog
         confirmText="Supprimer le commentaire"

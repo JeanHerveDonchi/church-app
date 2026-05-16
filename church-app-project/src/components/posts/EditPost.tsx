@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { buildAuthPath } from '@/features/auth/auth'
 import { Footer } from '@/components/Footer'
 import { Navbar } from '@/components/Navbar'
 import ArticleContent from '@/components/posts/create/content/ArticleContent'
@@ -231,11 +232,16 @@ function EditPostForm({ post, userPostsRoute }: EditPostFormProps) {
 
 function EditPost() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { postId } = useParams<{ postId: string }>()
   const { loading: authLoading, role, user } = useAuth()
   const { data: post, error, isLoading } = usePost(postId ?? '')
   const isAuthorized = role === 'admin' || role === 'super_admin'
   const userPostsRoute = user ? getUserPostsRoute(user.id) : '/'
+  const loginPath = buildAuthPath(
+    '/login',
+    `${location.pathname}${location.search}${location.hash}`,
+  )
 
   if (authLoading) {
     return (
@@ -265,7 +271,7 @@ function EditPost() {
   }
 
   if (!user || !isAuthorized) {
-    return <Navigate replace to={userPostsRoute} />
+    return <Navigate replace to={user ? userPostsRoute : loginPath} />
   }
 
   if (!isLoading && post && post.author?.id !== user.id) {

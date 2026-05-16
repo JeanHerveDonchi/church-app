@@ -66,7 +66,17 @@ export const pickRandomAvatar = (): AvatarName =>
   AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)]
 
 export const normalizeFullName = (value: string): string | null => {
-  const normalized = value.replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim()
+  const normalized = value
+    .replace(/[’`]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .map(
+      (word) => word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(' ')
+
   return normalized.length > 0 ? normalized : null
 }
 
@@ -90,6 +100,14 @@ export const validateFullName = (value: string): string | null => {
   }
 
   return null
+}
+
+export const validateRequiredFullName = (value: string) => {
+  if (normalizeFullName(value) === null) {
+    return 'Ajoutez votre nom complet.'
+  }
+
+  return validateFullName(value)
 }
 
 export const formatMemberSince = (createdAt: string | null | undefined) => {

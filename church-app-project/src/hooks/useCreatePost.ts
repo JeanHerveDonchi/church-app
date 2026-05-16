@@ -10,7 +10,7 @@ export const useCreatePost = () => {
   return useMutation({
     mutationFn: async (payload: CreatePostPayload) => {
       if (!user) {
-        throw new Error('You must be signed in to create a post.')
+        throw new Error('Vous devez etre connecte pour creer une publication.')
       }
 
       return postService.create(payload, user.id)

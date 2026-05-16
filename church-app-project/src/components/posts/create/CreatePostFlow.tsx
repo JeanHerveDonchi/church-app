@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { buildAuthPath } from '@/features/auth/auth'
 import { Footer } from '@/components/Footer'
 import { Navbar } from '@/components/Navbar'
 import StepOneType from '@/components/posts/create/steps/StepOneType'
@@ -11,6 +13,7 @@ import {
   normalizeOptionalText,
 } from '@/features/posts/post'
 import { useCreatePost } from '@/hooks/useCreatePost'
+import { useRequireFullName } from '@/hooks/useRequireFullName'
 import { useUpdatePost } from '@/hooks/useUpdatePost'
 import { useAuth } from '@/providers/authProvider'
 import type {
@@ -40,9 +43,17 @@ const flowSteps: Array<{ label: string; value: CreatePostStep }> = [
 
 function CreatePostFlow() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { loading, role, user } = useAuth()
+  const {
+    dialogProps: fullNameDialogProps,
+    hasFullName,
+    profileLoading,
+    requireFullName,
+  } = useRequireFullName()
   const createPost = useCreatePost()
   const updatePost = useUpdatePost()
+  const hasPromptedForNameRef = useRef(false)
   const [step, setStep] = useState<CreatePostStep>(1)
   const [contentType, setContentType] = useState<ContentType | null>(null)
   const [title, setTitle] = useState('')
@@ -59,6 +70,10 @@ function CreatePostFlow() {
 
   const isAuthorized = role === 'admin' || role === 'super_admin'
   const userPostsRoute = user ? getUserPostsRoute(user.id) : '/'
+  const loginPath = buildAuthPath(
+    '/login',
+    `${location.pathname}${location.search}${location.hash}`,
+  )
 
   useEffect(() => {
     if (!publishSuccess || !redirectPath) {
@@ -84,6 +99,33 @@ function CreatePostFlow() {
 
     return () => window.clearTimeout(timeoutId)
   }, [navigate, publishSuccess, redirectPath])
+
+  useEffect(() => {
+    if (
+      loading ||
+      !user ||
+      !isAuthorized ||
+      profileLoading ||
+      hasFullName ||
+      hasPromptedForNameRef.current
+    ) {
+      return
+    }
+
+    hasPromptedForNameRef.current = true
+
+    void requireFullName({
+      onContinue: async () => {},
+      title: 'Ajoutez votre nom pour publier un post',
+    })
+  }, [
+    hasFullName,
+    isAuthorized,
+    loading,
+    profileLoading,
+    requireFullName,
+    user,
+  ])
 
   const resetFlow = () => {
     setStep(1)
@@ -165,6 +207,19 @@ function CreatePostFlow() {
     setMediaUrl('')
     setSaveError(null)
     setPublishError(null)
+  }
+
+  const withRequiredFullName = async (action: () => Promise<void>) => {
+    if (!user) {
+      return
+    }
+
+    await requireFullName({
+      onContinue: async () => {
+        await action()
+      },
+      title: 'Ajoutez votre nom pour publier un post',
+    })
   }
 
   const handleSaveMetaDraft = async () => {
@@ -324,7 +379,7 @@ function CreatePostFlow() {
   }
 
   if (!user || !isAuthorized) {
-    return <Navigate replace to={user ? userPostsRoute : '/'} />
+    return <Navigate replace to={user ? userPostsRoute : loginPath} />
   }
 
   return (
@@ -390,7 +445,7 @@ function CreatePostFlow() {
                 onDescriptionChange={setDescription}
                 onNext={() => setStep(3)}
                 onSaveDraft={() => {
-                  void handleSaveMetaDraft()
+                  void withRequiredFullName(handleSaveMetaDraft)
                 }}
                 onTitleChange={setTitle}
                 saveError={saveError}
@@ -409,11 +464,11 @@ function CreatePostFlow() {
                 onBack={() => setStep(2)}
                 onMediaChange={setMediaUrl}
                 onPublish={() => {
-                  void handlePublish()
+                  void withRequiredFullName(handlePublish)
                 }}
                 publishSuccess={publishSuccess}
                 onSaveDraft={() => {
-                  void handleSaveContentDraft()
+                  void withRequiredFullName(handleSaveContentDraft)
                 }}
                 onTextChange={setTextContent}
                 publishError={publishError}
@@ -425,6 +480,8 @@ function CreatePostFlow() {
           </div>
         </section>
       </main>
+
+      <ConfirmDialog {...fullNameDialogProps} />
 
       <Footer />
     </div>
