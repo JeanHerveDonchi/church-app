@@ -114,11 +114,6 @@ export function Navbar({ title = 'THC Global' }: NavbarProps) {
     setIsMenuOpen(false)
   }
 
-  const handlePlaceholderAction = (label: string) => () => {
-    console.info(`${label} n'est pas encore connecte.`)
-    closeMenu()
-  }
-
   const handleLogin = async () => {
     closeMenu()
     navigate(buildAuthPath('/login', currentPath))
@@ -148,6 +143,11 @@ export function Navbar({ title = 'THC Global' }: NavbarProps) {
       },
       title: 'Ajoutez votre nom pour publier un post',
     })
+  }
+
+  const handleManageUsersNavigation = () => {
+    closeMenu()
+    navigate('/manage-users')
   }
 
   const actions: MenuAction[] = []
@@ -188,7 +188,7 @@ export function Navbar({ title = 'THC Global' }: NavbarProps) {
     if (role === 'super_admin') {
       actions.push({
         label: 'Gerer les utilisateurs',
-        onClick: handlePlaceholderAction('Gerer les utilisateurs'),
+        onClick: handleManageUsersNavigation,
       })
     }
 

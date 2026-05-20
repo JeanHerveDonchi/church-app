@@ -110,6 +110,14 @@ export const validateRequiredFullName = (value: string) => {
   return validateFullName(value)
 }
 
+export const validateProfileSearchName = (value: string) => {
+  if (normalizeFullName(value) === null) {
+    return 'Ajoutez un nom pour lancer la recherche.'
+  }
+
+  return validateFullName(value)
+}
+
 export const formatMemberSince = (createdAt: string | null | undefined) => {
   if (!createdAt) {
     return 'Membre depuis date inconnue'
@@ -124,6 +132,24 @@ export const formatMemberSince = (createdAt: string | null | undefined) => {
   const formattedDate = new Intl.DateTimeFormat('fr-CA', {
     month: 'short',
     year: 'numeric',
+  }).format(date)
+
+  return `Membre depuis ${formattedDate}`
+}
+
+export const formatMemberSinceDate = (createdAt: string | null | undefined) => {
+  if (!createdAt) {
+    return 'Membre depuis date inconnue'
+  }
+
+  const date = new Date(createdAt)
+
+  if (Number.isNaN(date.valueOf())) {
+    return 'Membre depuis date inconnue'
+  }
+
+  const formattedDate = new Intl.DateTimeFormat('fr-CA', {
+    dateStyle: 'medium',
   }).format(date)
 
   return `Membre depuis ${formattedDate}`

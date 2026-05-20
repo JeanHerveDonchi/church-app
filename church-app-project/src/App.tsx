@@ -5,6 +5,7 @@ import PostDetail from '@/components/posts/PostDetail'
 import PostFeed from '@/components/posts/PostFeed'
 import Home from '@/pages/Home'
 import Login from '@/pages/Login'
+import ManageUsers from '@/pages/ManageUsers'
 import Profile from '@/pages/Profile'
 import Signup from '@/pages/Signup'
 
@@ -13,6 +14,7 @@ function App() {
     <Routes>
       <Route element={<Home />} path="/" />
       <Route element={<Login />} path="/login" />
+      <Route element={<ManageUsers />} path="/manage-users" />
       <Route element={<Signup />} path="/signup" />
       <Route element={<PostFeed />} path="/posts" />
       <Route element={<PostFeed />} path="/posts/:userId" />
