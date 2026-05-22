@@ -22,6 +22,7 @@ export interface TipTapMark {
 export interface PostAuthor {
   id:         string
   email:      string | null
+  deleted_at: string | null
   full_name:  string | null
   avatar_url: string | null
 }

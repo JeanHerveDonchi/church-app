@@ -1,7 +1,9 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 type ConfirmDialogProps = {
+  children?: ReactNode
   confirmDisabled?: boolean
   open: boolean
   title: string
@@ -19,6 +21,7 @@ type ConfirmDialogProps = {
 }
 
 export function ConfirmDialog({
+  children,
   confirmDisabled = false,
   open,
   title,
@@ -38,15 +41,32 @@ export function ConfirmDialog({
   const descriptionId = useId()
   const inputId = useId()
   const inputErrorId = useId()
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isBusy = loading || isSubmitting
+  const hasCustomContent = children !== undefined && children !== null
   const hasInput =
+    !hasCustomContent &&
     typeof inputValue === 'string' && typeof onInputChange === 'function'
   const describedBy =
     [description ? descriptionId : null, inputError ? inputErrorId : null]
       .filter(Boolean)
       .join(' ') || undefined
+
+  const getFocusableElements = () =>
+    dialogRef.current
+      ? Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter(
+          (element) =>
+            !element.hasAttribute('disabled') &&
+            element.getAttribute('aria-hidden') !== 'true',
+        )
+      : []
 
   useEffect(() => {
     if (!open) {
@@ -66,9 +86,60 @@ export function ConfirmDialog({
       return
     }
 
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+
+    const frameId = window.requestAnimationFrame(() => {
+      getFocusableElements()[0]?.focus()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      previousFocusRef.current?.focus()
+      previousFocusRef.current = null
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isBusy) {
         onCancel()
+        return
+      }
+
+      if (event.key !== 'Tab') {
+        return
+      }
+
+      const focusableElements = getFocusableElements()
+
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        return
+      }
+
+      const activeElement = document.activeElement as HTMLElement | null
+      const currentIndex = activeElement
+        ? focusableElements.indexOf(activeElement)
+        : -1
+
+      if (event.shiftKey) {
+        if (currentIndex <= 0) {
+          event.preventDefault()
+          focusableElements[focusableElements.length - 1]?.focus()
+        }
+        return
+      }
+
+      if (currentIndex === -1 || currentIndex === focusableElements.length - 1) {
+        event.preventDefault()
+        focusableElements[0]?.focus()
       }
     }
 
@@ -114,89 +185,94 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-modal="true"
         className="relative w-full max-w-md rounded-[2rem] border border-stone-200 bg-white p-5 shadow-[0_28px_80px_rgba(17,17,17,0.24)] sm:p-6"
+        ref={dialogRef}
         role="dialog"
       >
-        <div className="space-y-2">
-          <p
-            className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500"
-          >
-            Confirmation
-          </p>
-          <h2
-            className="font-serif text-2xl font-semibold tracking-tight text-stone-950"
-            id={titleId}
-          >
-            {title}
-          </h2>
-          {description ? (
-            <p className="text-sm leading-6 text-stone-600" id={descriptionId}>
-              {description}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleConfirm()
+          }}
+        >
+          <div className="space-y-2">
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500"
+            >
+              Confirmation
             </p>
-          ) : null}
-        </div>
-
-        {hasInput ? (
-          <div className="mt-5 space-y-2">
-            {inputLabel ? (
-              <label
-                className="block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500"
-                htmlFor={inputId}
-              >
-                {inputLabel}
-              </label>
-            ) : null}
-
-            <input
-              autoFocus
-              className={`w-full rounded-3xl border bg-stone-50 px-5 py-4 text-base text-stone-950 outline-none transition placeholder:text-stone-400 focus:bg-white ${
-                inputError
-                  ? 'border-red-500 focus:border-red-500'
-                  : 'border-stone-200 focus:border-stone-950'
-              }`}
-              id={inputId}
-              maxLength={inputMaxLength}
-              onChange={(event) => onInputChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !isBusy && !confirmDisabled) {
-                  event.preventDefault()
-                  void handleConfirm()
-                }
-              }}
-              placeholder={inputPlaceholder}
-              type="text"
-              value={inputValue}
-            />
-
-            {inputError ? (
-              <p className="text-sm text-red-600" id={inputErrorId}>
-                {inputError}
+            <h2
+              className="font-serif text-2xl font-semibold tracking-tight text-stone-950"
+              id={titleId}
+            >
+              {title}
+            </h2>
+            {description ? (
+              <p className="text-sm leading-6 text-stone-600" id={descriptionId}>
+                {description}
               </p>
             ) : null}
           </div>
-        ) : null}
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-950 transition hover:-translate-y-0.5 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isBusy}
-            onClick={onCancel}
-            type="button"
-            {...(!hasInput ? { autoFocus: true } : {})}
-          >
-            Annuler
-          </button>
+          {hasInput ? (
+            <div className="mt-5 space-y-2">
+              {inputLabel ? (
+                <label
+                  className="block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500"
+                  htmlFor={inputId}
+                >
+                  {inputLabel}
+                </label>
+              ) : null}
 
-          <button
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-950 bg-stone-950 px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isBusy || confirmDisabled}
-            onClick={() => {
-              void handleConfirm()
-            }}
-            type="button"
-          >
-            {isBusy ? `${confirmText}...` : confirmText}
-          </button>
-        </div>
+              <input
+                className={`w-full rounded-3xl border bg-stone-50 px-5 py-4 text-base text-stone-950 outline-none transition placeholder:text-stone-400 focus:bg-white ${
+                  inputError
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-stone-200 focus:border-stone-950'
+                }`}
+                id={inputId}
+                maxLength={inputMaxLength}
+                onChange={(event) => onInputChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !isBusy && !confirmDisabled) {
+                    event.preventDefault()
+                    void handleConfirm()
+                  }
+                }}
+                placeholder={inputPlaceholder}
+                type="text"
+                value={inputValue}
+              />
+
+              {inputError ? (
+                <p className="text-sm text-red-600" id={inputErrorId}>
+                  {inputError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {hasCustomContent ? <div className="mt-5">{children}</div> : null}
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-950 transition hover:-translate-y-0.5 hover:border-stone-950 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isBusy}
+              onClick={onCancel}
+              type="button"
+            >
+              Annuler
+            </button>
+
+            <button
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-950 bg-stone-950 px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isBusy || confirmDisabled}
+              type="submit"
+            >
+              {isBusy ? `${confirmText}...` : confirmText}
+            </button>
+          </div>
+        </form>
       </div>
     </div>,
     document.body,

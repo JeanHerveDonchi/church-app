@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { AccountDeletionDialog } from '@/components/AccountDeletionDialog'
 import { AvatarPicker } from '../components/AvatarPicker'
-import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Footer } from '../components/Footer'
+import { resetLocalSession } from '../features/auth/session'
 import { Navbar } from '../components/Navbar'
 import { buildAuthPath } from '../features/auth/auth'
 import {
@@ -12,10 +14,9 @@ import {
   normalizeFullName,
   validateFullName,
 } from '../features/profile/profile'
+import { useDeleteAccount } from '../hooks/useDeleteAccount'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { useAuth } from '../providers/authProvider'
-import { supabase } from '../providers/supabaseClient'
-import { deleteAccount as deleteAccountService } from '../services/delete/accounts/delete.service'
 
 type SectionMessage = {
   kind: 'error' | 'success'
@@ -125,7 +126,9 @@ function ProfileLoadingState() {
 function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const { loading: authLoading, role, user } = useAuth()
+  const deleteAccount = useDeleteAccount()
   const {
     error,
     loading,
@@ -139,9 +142,8 @@ function Profile() {
   const [fullNameDraft, setFullNameDraft] = useState<string | null>(null)
   const [nameMessage, setNameMessage] = useState<SectionMessage | null>(null)
   const [avatarMessage, setAvatarMessage] = useState<SectionMessage | null>(null)
-  const [deleteMessage, setDeleteMessage] = useState<SectionMessage | null>(null)
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const fullNameInput = fullNameDraft ?? profile?.full_name ?? ''
   const fullNameValidationError = validateFullName(fullNameInput)
   const normalizedFullName = normalizeFullName(fullNameInput)
@@ -230,35 +232,37 @@ function Profile() {
     })
   }
 
-  const handleDeleteAccount = async () => {
-    setDeleteMessage(null)
-    setIsDeletingAccount(true)
+  const handleDeleteAccount = async (values: Record<string, string>) => {
+    setDeleteErrorMessage(null)
 
     try {
-      const wasDeleted = await deleteAccountService()
-
-      if (!wasDeleted) {
-        setIsDeleteDialogOpen(false)
-        setDeleteMessage({
-          kind: 'error',
-          text: 'Impossible de supprimer votre compte pour le moment.',
-        })
-        return
-      }
-
-      const { error: signOutError } = await supabase.auth.signOut({
-        scope: 'local',
+      await deleteAccount.mutateAsync({
+        requesterEmail: values.requesterEmail,
       })
-
-      if (signOutError) {
-        console.error('Error signing out after account deletion:', signOutError)
-      }
-
-      setIsDeleteDialogOpen(false)
-      navigate('/', { replace: true })
-    } finally {
-      setIsDeletingAccount(false)
+    } catch (error) {
+      setDeleteErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de supprimer votre compte pour le moment.',
+      )
+      return
     }
+
+    const { error: signOutError } = await resetLocalSession()
+
+    if (signOutError) {
+      console.error('Error resetting session after account deletion:', signOutError)
+    }
+
+    queryClient.clear()
+    setIsDeleteDialogOpen(false)
+
+    if (typeof window !== 'undefined') {
+      window.location.replace('/login')
+      return
+    }
+
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -440,21 +444,17 @@ function Profile() {
                 <div className="space-y-4">
                   <button
                     className="inline-flex items-center justify-center rounded-full border border-stone-950 bg-white px-5 py-3 text-sm font-medium text-stone-950 transition hover:-translate-y-0.5 hover:bg-stone-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isDeletingAccount}
+                    disabled={deleteAccount.isPending}
                     onClick={() => {
-                      setDeleteMessage(null)
+                      setDeleteErrorMessage(null)
                       setIsDeleteDialogOpen(true)
                     }}
                     type="button"
                   >
-                    {isDeletingAccount
+                    {deleteAccount.isPending
                       ? 'Suppression en cours...'
                       : 'Supprimer mon compte'}
                   </button>
-
-                  {deleteMessage ? (
-                    <SectionFeedback message={deleteMessage} />
-                  ) : null}
                 </div>
               </SectionCard>
             </div>
@@ -462,16 +462,30 @@ function Profile() {
         </section>
       </main>
 
-      <ConfirmDialog
-        confirmText="Supprimer"
-        description="Cette action est irréversible."
-        loading={isDeletingAccount}
-        onCancel={() => {
+      <AccountDeletionDialog
+        confirmationDescription="Saisissez votre e-mail pour continuer."
+        confirmationTitle="Confirmer avec votre e-mail"
+        errorMessage={deleteErrorMessage}
+        fields={[
+          {
+            autoComplete: 'email',
+            expectedValue: profile?.email ?? user.email ?? '',
+            id: 'requesterEmail',
+            invalidMessage: 'Cette adresse ne correspond pas.',
+            label: 'Votre e-mail',
+            placeholder: 'vous@exemple.com',
+            requiredMessage: 'Saisissez votre e-mail.',
+          },
+        ]}
+        loading={deleteAccount.isPending}
+        onClose={() => {
+          setDeleteErrorMessage(null)
           setIsDeleteDialogOpen(false)
         }}
         onConfirm={handleDeleteAccount}
         open={isDeleteDialogOpen}
-        title="Supprimer mon compte"
+        warningDescription="Cette action est irréversible."
+        warningTitle="Supprimer mon compte"
       />
 
       <Footer />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Search, Trash2 } from 'lucide-react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { AccountDeletionDialog } from '@/components/AccountDeletionDialog'
 import { Footer } from '@/components/Footer'
 import { Navbar } from '@/components/Navbar'
 import { buildAuthPath, normalizeEmail, validateEmail } from '@/features/auth/auth'
@@ -11,6 +11,7 @@ import {
   normalizeFullName,
   validateProfileSearchName,
 } from '@/features/profile/profile'
+import { useDeleteAccount } from '@/hooks/useDeleteAccount'
 import { useAuth } from '@/providers/authProvider'
 import { supabase } from '@/providers/supabaseClient'
 
@@ -183,10 +184,15 @@ function SearchCard({
 function ManageUsers() {
   const location = useLocation()
   const { loading, role, user } = useAuth()
+  const deleteAccount = useDeleteAccount()
   const [emailQuery, setEmailQuery] = useState('')
   const [nameQuery, setNameQuery] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [nameError, setNameError] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
+    null,
+  )
   const [searchError, setSearchError] = useState<string | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [profiles, setProfiles] = useState<SearchableProfile[]>([])
@@ -213,8 +219,9 @@ function ManageUsers() {
 
     try {
       const queryBuilder = supabase
-        .from('public.profiles')
+        .from('profiles')
         .select(PROFILE_SEARCH_SELECT)
+        .is('deleted_at', null)
         .neq('id', user.id)
         .order('created_at', { ascending: false })
 
@@ -251,6 +258,7 @@ function ManageUsers() {
 
     setEmailError(requiredEmailError)
     setNameError(null)
+    setActionMessage(null)
     setSearchError(null)
 
     if (requiredEmailError) {
@@ -266,6 +274,7 @@ function ManageUsers() {
 
     setNameError(nextNameError)
     setEmailError(null)
+    setActionMessage(null)
     setSearchError(null)
 
     if (nextNameError) {
@@ -313,6 +322,37 @@ function ManageUsers() {
 
   if (role !== 'super_admin') {
     return <Navigate replace to="/profile" />
+  }
+
+  const handleDeleteProfile = async (values: Record<string, string>) => {
+    if (!profileToDelete) {
+      return
+    }
+
+    const targetProfile = profileToDelete
+    setDeleteErrorMessage(null)
+
+    try {
+      await deleteAccount.mutateAsync({
+        requesterEmail: values.requesterEmail,
+        targetEmail: values.targetEmail,
+        targetUserId: targetProfile.id,
+      })
+    } catch (error) {
+      setDeleteErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Impossible de supprimer ce compte pour le moment.',
+      )
+      return
+    }
+
+    setProfiles((currentProfiles) =>
+      currentProfiles.filter((profile) => profile.id !== targetProfile.id),
+    )
+    setActionMessage('Le compte a ete supprime.')
+    setDeleteErrorMessage(null)
+    setProfileToDelete(null)
   }
 
   return (
@@ -371,6 +411,12 @@ function ManageUsers() {
               </div>
             ) : null}
 
+            {!searchError && actionMessage ? (
+              <div className="rounded-[1.75rem] border border-stone-200 bg-stone-50 px-5 py-6 text-sm text-stone-700">
+                {actionMessage}
+              </div>
+            ) : null}
+
             {!searchError && hasSearched && profiles.length === 0 ? (
               <div className="rounded-[1.75rem] border border-dashed border-stone-300 bg-stone-50 px-5 py-8 text-center text-sm text-stone-600">
                 Aucun profil eligible ne correspond a cette recherche.
@@ -418,10 +464,14 @@ function ManageUsers() {
 
                       <div className="flex items-center justify-end gap-3">
                         <button
-                          aria-label="Supprimer le profil"
+                          aria-label="Supprimer le compte"
                           className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-950 transition hover:-translate-y-0.5 hover:border-stone-950 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-stone-300"
-                          onClick={() => setProfileToDelete(profile)}
-                          title="Supprimer le profil"
+                          onClick={() => {
+                            setActionMessage(null)
+                            setDeleteErrorMessage(null)
+                            setProfileToDelete(profile)
+                          }}
+                          title="Supprimer le compte"
                           type="button"
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={1.8} />
@@ -444,19 +494,38 @@ function ManageUsers() {
         </section>
       </main>
 
-      <ConfirmDialog
-        confirmText="Supprimer"
-        description={
-          profileToDelete
-            ? `Confirmez la suppression du profil de ${getDisplayName(profileToDelete)}.`
-            : undefined
-        }
-        onCancel={() => setProfileToDelete(null)}
-        onConfirm={async () => {
+      <AccountDeletionDialog
+        confirmationDescription="Saisissez les deux e-mails pour continuer."
+        confirmationTitle="Confirmer les adresses"
+        errorMessage={deleteErrorMessage}
+        fields={[
+          {
+            autoComplete: 'email',
+            expectedValue: user.email ?? '',
+            id: 'requesterEmail',
+            invalidMessage: 'Cette adresse ne correspond pas.',
+            label: 'Votre e-mail',
+            placeholder: 'vous@exemple.com',
+            requiredMessage: 'Saisissez votre e-mail.',
+          },
+          {
+            expectedValue: profileToDelete?.email ?? '',
+            id: 'targetEmail',
+            invalidMessage: "L'adresse du compte ne correspond pas.",
+            label: 'E-mail du compte',
+            placeholder: 'nom@exemple.com',
+            requiredMessage: "Saisissez l'e-mail du compte.",
+          },
+        ]}
+        loading={deleteAccount.isPending}
+        onClose={() => {
+          setDeleteErrorMessage(null)
           setProfileToDelete(null)
         }}
+        onConfirm={handleDeleteProfile}
         open={profileToDelete !== null}
-        title="Supprimer ce profil ?"
+        warningDescription="Cette action est irréversible."
+        warningTitle="Supprimer ce compte ?"
       />
 
       <Footer />

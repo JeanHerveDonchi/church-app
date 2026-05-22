@@ -132,7 +132,9 @@ export const getPostStatusLabel = (status: PostStatus) => {
 }
 
 export const getAuthorName = (author: PostAuthor | null) =>
-  author?.full_name?.trim() || 'Membre Anonyme'
+  author?.deleted_at
+    ? 'Utilisateur supprimé'
+    : author?.full_name?.trim() || 'Membre Anonyme'
 
 export const getUserPostsRoute = (userId: string) => `/posts/${userId}`
 

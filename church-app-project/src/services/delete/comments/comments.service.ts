@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import type { Comment, CreateCommentPayload } from '@/types/post.types'
 
 const COMMENT_SELECT =
-  'id, content, created_at, post_id, profiles ( id, full_name, avatar_url )'
+  'id, content, created_at, post_id, profiles ( id, full_name, avatar_url, deleted_at )'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const toComment = (row: any): Comment => ({
@@ -14,6 +14,7 @@ const toComment = (row: any): Comment => ({
     ? {
         id:         row.profiles.id,
         email:      null,
+        deleted_at: row.profiles.deleted_at,
         full_name:  row.profiles.full_name,
         avatar_url: row.profiles.avatar_url,
       }

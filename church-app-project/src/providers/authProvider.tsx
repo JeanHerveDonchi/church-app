@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { resetLocalSession } from '@/features/auth/session'
 import { supabase } from './supabaseClient'
 
 type Role = 'user' | 'admin' | 'super_admin'
@@ -17,6 +18,11 @@ type AuthContextType = {
   user: User | null
   role: Role | null
   loading: boolean
+}
+
+type AuthProfileState = {
+  isDeleted: boolean
+  role: Role | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -37,34 +43,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: null,
   })
 
-  const fetchRole = async (userId: string): Promise<Role | null> => {
+  const fetchAuthProfileState = async (
+    userId: string,
+  ): Promise<AuthProfileState> => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role:roles!profiles_role_id_fkey(name)')
+      .select('deleted_at, role:roles!profiles_role_id_fkey(name)')
       .eq('id', userId)
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching role:', error)
-      return null
+      console.error('Error fetching auth profile state:', error)
+      return {
+        isDeleted: false,
+        role: null,
+      }
     }
 
     const profile = data as unknown as {
+      deleted_at: string | null
       role: {
         name: string | null
       } | null
     } | null
     const roleName = profile?.role?.name ?? null
 
+    if (profile?.deleted_at) {
+      return {
+        isDeleted: true,
+        role: null,
+      }
+    }
+
     if (isRole(roleName)) {
-      return roleName
+      return {
+        isDeleted: false,
+        role: roleName,
+      }
     }
 
     if (roleName !== null) {
       console.error('Unexpected role value:', roleName)
     }
 
-    return null
+    return {
+      isDeleted: false,
+      role: null,
+    }
   }
 
   const syncAuthState = useEffectEvent(async (nextSession: Session | null) => {
@@ -93,14 +118,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setLoading(true)
-    const nextRole = await fetchRole(nextUser.id)
+    const nextProfileState = await fetchAuthProfileState(nextUser.id)
 
     if (!isMountedRef.current || loadId !== activeLoadIdRef.current) {
       return
     }
 
-    cachedRoleRef.current = { userId: nextUser.id, role: nextRole }
-    setRole(nextRole)
+    if (nextProfileState.isDeleted) {
+      cachedRoleRef.current = { userId: null, role: null }
+      setSession(null)
+      setUser(null)
+      setRole(null)
+      setLoading(false)
+
+      const { error: signOutError } = await resetLocalSession()
+
+      if (signOutError) {
+        console.error('Error resetting deleted account session:', signOutError)
+      }
+
+      return
+    }
+
+    cachedRoleRef.current = { userId: nextUser.id, role: nextProfileState.role }
+    setRole(nextProfileState.role)
     setLoading(false)
   })
 

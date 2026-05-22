@@ -42,6 +42,7 @@ const createOptimisticComment = ({
   author: {
     id: userId,
     email: null,
+    deleted_at: null,
     full_name: authorFullName,
     avatar_url: authorAvatarUrl,
   },

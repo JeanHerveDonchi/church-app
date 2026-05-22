@@ -21,6 +21,7 @@ const toPost = (row: any): TypedPost => ({
     ? {
         id:         row.profiles.id,
         email:      null,
+        deleted_at: row.profiles.deleted_at,
         full_name:  row.profiles.full_name,
         avatar_url: row.profiles.avatar_url,
       }
@@ -32,7 +33,7 @@ const POST_SELECT = `
   created_at, updated_at, published_at,
   content_types ( name ),
   post_statuses ( name ),
-  profiles ( id, full_name, avatar_url )
+  profiles ( id, full_name, avatar_url, deleted_at )
 `
 
 export const postService = {
