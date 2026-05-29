@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { commentsService } from '@/services/delete/comments/comments.service'
+import { commentsService } from '@/services/comments/comments.service'
 
 export const useComments = (postId: string) =>
   useQuery({

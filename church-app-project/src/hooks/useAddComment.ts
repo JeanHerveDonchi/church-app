@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/providers/authProvider'
-import { commentsService } from '@/services/delete/comments/comments.service'
+import { commentsService } from '@/services/comments/comments.service'
 import type { Comment, CreateCommentPayload } from '@/types/post.types'
 
 export const useAddComment = () => {

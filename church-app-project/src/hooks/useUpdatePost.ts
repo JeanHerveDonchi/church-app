@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { postService } from '@/services/delete/posts/post.service'
+import { postService } from '@/services/posts/post.service'
 import type { UpdatePostPayload } from '@/types/post.types'
 
 export const useUpdatePost = () => {

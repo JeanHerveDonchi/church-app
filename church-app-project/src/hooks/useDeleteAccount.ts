@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   deleteAccount,
   type DeleteAccountPayload,
-} from '@/services/delete/accounts/delete.service'
+} from '@/services/accounts/delete.service'
 
 export const useDeleteAccount = () => {
   const queryClient = useQueryClient()

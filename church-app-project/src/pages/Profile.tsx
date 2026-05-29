@@ -17,6 +17,7 @@ import {
 import { useDeleteAccount } from '../hooks/useDeleteAccount'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { useAuth } from '../providers/authProvider'
+import { supabase } from '@/providers/supabaseClient'
 
 type SectionMessage = {
   kind: 'error' | 'success'
@@ -239,6 +240,7 @@ function Profile() {
       await deleteAccount.mutateAsync({
         requesterEmail: values.requesterEmail,
       })
+      //await supabase.auth.signOut();
     } catch (error) {
       setDeleteErrorMessage(
         error instanceof Error

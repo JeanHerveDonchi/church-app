@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/providers/authProvider'
-import { postService } from '@/services/delete/posts/post.service'
+import { postService } from '@/services/posts/post.service'
 import type { CreatePostPayload } from '@/types/post.types'
 
 export const useCreatePost = () => {
