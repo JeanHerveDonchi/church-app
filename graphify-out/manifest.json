@@ -1,0 +1,527 @@
+{
+  "/Users/donchiherve/Desktop/projects/church-app/ARCHITECTURE_DELETE_RECOVER.md": {
+    "mtime": 1782777166.086609,
+    "ast_hash": "9b3cb5f570e29759758c5ec6e99b8f73",
+    "semantic_hash": "9b3cb5f570e29759758c5ec6e99b8f73"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/README.md": {
+    "mtime": 1780080872.645244,
+    "ast_hash": "fb678d740e6e3eb50d607a0495d4cbe2",
+    "semantic_hash": "fb678d740e6e3eb50d607a0495d4cbe2"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/PROJECT_ANALYSIS.md": {
+    "mtime": 1782776322.7140598,
+    "ast_hash": "8b9e5c064ca818ace27fc21b680addf9",
+    "semantic_hash": "8b9e5c064ca818ace27fc21b680addf9"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/package.json": {
+    "mtime": 1782753958.198442,
+    "ast_hash": "a8d6ed3afc5702e6e24f0f261206562a",
+    "semantic_hash": "a8d6ed3afc5702e6e24f0f261206562a"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/tsconfig.node.json": {
+    "mtime": 1777002614.656868,
+    "ast_hash": "70bdd0a673bcfc0e828080b306e7c680",
+    "semantic_hash": "70bdd0a673bcfc0e828080b306e7c680"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/tsconfig.app.json": {
+    "mtime": 1779815376.3524957,
+    "ast_hash": "59904a7b574c109e7aafb3a9cb35d3ef",
+    "semantic_hash": "59904a7b574c109e7aafb3a9cb35d3ef"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/package.json": {
+    "mtime": 1778888962.30525,
+    "ast_hash": "338d0ab2492febf05fb44e650515d49e",
+    "semantic_hash": "338d0ab2492febf05fb44e650515d49e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/tsconfig.json": {
+    "mtime": 1777002614.65673,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/eslint.config.js": {
+    "mtime": 1777002614.6512296,
+    "ast_hash": "0355276bc79439afe3c53e3a2470ca1e",
+    "semantic_hash": "0355276bc79439afe3c53e3a2470ca1e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/vite.config.ts": {
+    "mtime": 1777586384.4156737,
+    "ast_hash": "0e3813451849c0186354e1d43d7b53a3",
+    "semantic_hash": "0e3813451849c0186354e1d43d7b53a3"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/App.tsx": {
+    "mtime": 1782779542.0425298,
+    "ast_hash": "1d3695fde59e2bc8bf6bd3488a25ddac",
+    "semantic_hash": "1d3695fde59e2bc8bf6bd3488a25ddac"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/main.tsx": {
+    "mtime": 1777587137.1177242,
+    "ast_hash": "a7c576aa89f229cc27be0475edc59a3b",
+    "semantic_hash": "a7c576aa89f229cc27be0475edc59a3b"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/types/post.types.ts": {
+    "mtime": 1779415545.0600076,
+    "ast_hash": "c7367a1900dc14eaef2128ce3fcbc153",
+    "semantic_hash": "c7367a1900dc14eaef2128ce3fcbc153"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/providers/supabaseClient.ts": {
+    "mtime": 1777086823.1514826,
+    "ast_hash": "b09fc310e109ed3e45419fcc0bf59add",
+    "semantic_hash": "b09fc310e109ed3e45419fcc0bf59add"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/providers/authProvider.tsx": {
+    "mtime": 1782754654.0185933,
+    "ast_hash": "a8e56db004e1735538811fb5afdfeea0",
+    "semantic_hash": "a8e56db004e1735538811fb5afdfeea0"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/features/posts/post.ts": {
+    "mtime": 1779415574.9790573,
+    "ast_hash": "02f96d2fa0322d1f1527e5d3cc7e1467",
+    "semantic_hash": "02f96d2fa0322d1f1527e5d3cc7e1467"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/features/auth/session.ts": {
+    "mtime": 1779415468.0194123,
+    "ast_hash": "11848b38fd2747236951a1e830ba81f8",
+    "semantic_hash": "11848b38fd2747236951a1e830ba81f8"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/features/auth/auth.ts": {
+    "mtime": 1780081131.1581244,
+    "ast_hash": "6c4a57876b2166c87c195eb99e147f7c",
+    "semantic_hash": "6c4a57876b2166c87c195eb99e147f7c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/features/profile/profile.ts": {
+    "mtime": 1779243525.525338,
+    "ast_hash": "43a2d47d144b672ed2f83096657a6a83",
+    "semantic_hash": "43a2d47d144b672ed2f83096657a6a83"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/ConfirmDialog.tsx": {
+    "mtime": 1779415665.273538,
+    "ast_hash": "018252566592b0f6dd0606771603be01",
+    "semantic_hash": "018252566592b0f6dd0606771603be01"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/Navbar.tsx": {
+    "mtime": 1782754640.491235,
+    "ast_hash": "ce67e8609442e2e3e128adbfc88bcb94",
+    "semantic_hash": "ce67e8609442e2e3e128adbfc88bcb94"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/PasswordField.tsx": {
+    "mtime": 1778889058.884955,
+    "ast_hash": "54daecd9477030129d6d2e97295e0d51",
+    "semantic_hash": "54daecd9477030129d6d2e97295e0d51"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/AvatarPicker.tsx": {
+    "mtime": 1778578664.3508658,
+    "ast_hash": "22fa4dff7f614c5ab9a76788899a4702",
+    "semantic_hash": "22fa4dff7f614c5ab9a76788899a4702"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/ProtectedRoute.tsx": {
+    "mtime": 1780081623.7576454,
+    "ast_hash": "30aa6754785192f35a2f43a767eba4f2",
+    "semantic_hash": "30aa6754785192f35a2f43a767eba4f2"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/AccountDeletionDialog.tsx": {
+    "mtime": 1779445277.799343,
+    "ast_hash": "af5fafa958b4140ccc71aae8b6e4cfd4",
+    "semantic_hash": "af5fafa958b4140ccc71aae8b6e4cfd4"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/Footer.tsx": {
+    "mtime": 1778580814.2219086,
+    "ast_hash": "cf052ed62d66583fe4eeb762bdcf9725",
+    "semantic_hash": "cf052ed62d66583fe4eeb762bdcf9725"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/PostCard.tsx": {
+    "mtime": 1778579854.6955583,
+    "ast_hash": "7706a68ab89c2dd38f4e212b7a5f1fc7",
+    "semantic_hash": "7706a68ab89c2dd38f4e212b7a5f1fc7"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/PostFeed.tsx": {
+    "mtime": 1778843117.904376,
+    "ast_hash": "ec82ac93ac0a72403b81f4243adc63f3",
+    "semantic_hash": "ec82ac93ac0a72403b81f4243adc63f3"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/PostDetail.tsx": {
+    "mtime": 1778575342.6742392,
+    "ast_hash": "45e34f262626be61a5e681b8b1aa8c80",
+    "semantic_hash": "45e34f262626be61a5e681b8b1aa8c80"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/EditPost.tsx": {
+    "mtime": 1778843159.272309,
+    "ast_hash": "5f2ea1eebd868e2aeaf3022122ed125b",
+    "semantic_hash": "5f2ea1eebd868e2aeaf3022122ed125b"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/CommentSection.tsx": {
+    "mtime": 1779415577.454898,
+    "ast_hash": "49b04b2c1d9dbcbeb09f8ceee90a5a59",
+    "semantic_hash": "49b04b2c1d9dbcbeb09f8ceee90a5a59"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/composer/VideoComposer.tsx": {
+    "mtime": 1777586630.0235848,
+    "ast_hash": "bde0e420a35ad252389125b3d3b6b32a",
+    "semantic_hash": "bde0e420a35ad252389125b3d3b6b32a"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/composer/AudioComposer.tsx": {
+    "mtime": 1777586630.0247045,
+    "ast_hash": "c2789c5a82f5a946c441a35ea50d6610",
+    "semantic_hash": "c2789c5a82f5a946c441a35ea50d6610"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/composer/ArticleComposer.tsx": {
+    "mtime": 1777587412.9735663,
+    "ast_hash": "33e007fee87f64f343cbf2c3cb7e5b91",
+    "semantic_hash": "33e007fee87f64f343cbf2c3cb7e5b91"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/composer/ComposerStatusToggle.tsx": {
+    "mtime": 1777586630.022177,
+    "ast_hash": "839781fa96a952c8716eb65352433809",
+    "semantic_hash": "839781fa96a952c8716eb65352433809"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/composer/PostComposer.tsx": {
+    "mtime": 1777586630.0249817,
+    "ast_hash": "48eedbccedfb36add85151e15529d84c",
+    "semantic_hash": "48eedbccedfb36add85151e15529d84c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/CreatePostFlow.tsx": {
+    "mtime": 1778843140.1174831,
+    "ast_hash": "248de28370fe968e48f1205996503faa",
+    "semantic_hash": "248de28370fe968e48f1205996503faa"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/content/VideoContent.tsx": {
+    "mtime": 1777753326.0634377,
+    "ast_hash": "d2356983c62ad21c6e3e3114781ac30e",
+    "semantic_hash": "d2356983c62ad21c6e3e3114781ac30e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/content/AudioContent.tsx": {
+    "mtime": 1777753326.0635428,
+    "ast_hash": "798c8e3734d5d072e2ef007dfec88ecd",
+    "semantic_hash": "798c8e3734d5d072e2ef007dfec88ecd"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/content/ArticleContent.tsx": {
+    "mtime": 1777753326.0632775,
+    "ast_hash": "c783f124e6e4913c3a780524dd200bcf",
+    "semantic_hash": "c783f124e6e4913c3a780524dd200bcf"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/steps/StepThreeContent.tsx": {
+    "mtime": 1778575342.6750762,
+    "ast_hash": "96620aed079c93a1228b467bb467b40e",
+    "semantic_hash": "96620aed079c93a1228b467bb467b40e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/steps/StepOneType.tsx": {
+    "mtime": 1778578536.3114433,
+    "ast_hash": "4d9be60a707f44855ea51c4c6851eced",
+    "semantic_hash": "4d9be60a707f44855ea51c4c6851eced"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/components/posts/create/steps/StepTwoMeta.tsx": {
+    "mtime": 1777753623.361992,
+    "ast_hash": "03ece164ddb01180295098e23c339031",
+    "semantic_hash": "03ece164ddb01180295098e23c339031"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useRequireFullName.ts": {
+    "mtime": 1782842227.847644,
+    "ast_hash": "f82fbe48cfc8980384976a7f29e07ec7",
+    "semantic_hash": "f82fbe48cfc8980384976a7f29e07ec7"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useDeleteAccount.ts": {
+    "mtime": 1779817091.5539265,
+    "ast_hash": "b5359c9ccf71d466a0ff9bd97c0b14aa",
+    "semantic_hash": "b5359c9ccf71d466a0ff9bd97c0b14aa"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useAddComment.ts": {
+    "mtime": 1779817091.5539389,
+    "ast_hash": "454e430daf1089fb02888d6cec7539f7",
+    "semantic_hash": "454e430daf1089fb02888d6cec7539f7"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useMyProfile.ts": {
+    "mtime": 1782754611.5946984,
+    "ast_hash": "b1a45271b876409b6c46e654efeaef88",
+    "semantic_hash": "b1a45271b876409b6c46e654efeaef88"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useUpdatePost.ts": {
+    "mtime": 1779817091.5539527,
+    "ast_hash": "7753d8289942cd78cc38f371d188d6db",
+    "semantic_hash": "7753d8289942cd78cc38f371d188d6db"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useDeletePost.ts": {
+    "mtime": 1779817091.553967,
+    "ast_hash": "4f7868962aed9215a3714281d88330bd",
+    "semantic_hash": "4f7868962aed9215a3714281d88330bd"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useCreatePost.ts": {
+    "mtime": 1779817091.5539463,
+    "ast_hash": "91f7d74b0a0aaa9ea84dce15b612e2c5",
+    "semantic_hash": "91f7d74b0a0aaa9ea84dce15b612e2c5"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useAuthFlow.ts": {
+    "mtime": 1780081623.7576578,
+    "ast_hash": "8a737d8ec13de819e7ba4b7b57353e54",
+    "semantic_hash": "8a737d8ec13de819e7ba4b7b57353e54"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/usePost.ts": {
+    "mtime": 1779817091.5832243,
+    "ast_hash": "9a30fcd5a8301c2cc9640fb2bd6c1015",
+    "semantic_hash": "9a30fcd5a8301c2cc9640fb2bd6c1015"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useAuthLifecycle.ts": {
+    "mtime": 1780081623.7576196,
+    "ast_hash": "71f284200ee08e2a0149386c6214c024",
+    "semantic_hash": "71f284200ee08e2a0149386c6214c024"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useComments.ts": {
+    "mtime": 1779817091.5539584,
+    "ast_hash": "5d18404bdbb8bf8c653c504e4ab7bbfc",
+    "semantic_hash": "5d18404bdbb8bf8c653c504e4ab7bbfc"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/usePublishedPosts.ts": {
+    "mtime": 1779817091.5832,
+    "ast_hash": "099c20f42cd72717e96ee79adc1e806f",
+    "semantic_hash": "099c20f42cd72717e96ee79adc1e806f"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useAdminPosts.ts": {
+    "mtime": 1779817091.553973,
+    "ast_hash": "197260d7fd357604dbe6a8bd789e7518",
+    "semantic_hash": "197260d7fd357604dbe6a8bd789e7518"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/usePosts.ts": {
+    "mtime": 1779817091.553978,
+    "ast_hash": "7c6fe1ccb81e03a7a5285feb7638da8c",
+    "semantic_hash": "7c6fe1ccb81e03a7a5285feb7638da8c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/index.ts": {
+    "mtime": 1780081623.7667296,
+    "ast_hash": "e72fe4f9a8153f82ebbb1be67312cc32",
+    "semantic_hash": "e72fe4f9a8153f82ebbb1be67312cc32"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/hooks/useDeleteComment.ts": {
+    "mtime": 1779817091.5533402,
+    "ast_hash": "94e901223d0c32c2dd17cd7d289fb102",
+    "semantic_hash": "94e901223d0c32c2dd17cd7d289fb102"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/lib/api.ts": {
+    "mtime": 1782843770.4401727,
+    "ast_hash": "7329957272f7d5ba5371f54e7816586e",
+    "semantic_hash": "7329957272f7d5ba5371f54e7816586e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/Login.tsx": {
+    "mtime": 1782779577.9511242,
+    "ast_hash": "13edc270d617c5ffd1d607473a5ebd75",
+    "semantic_hash": "13edc270d617c5ffd1d607473a5ebd75"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/Home.tsx": {
+    "mtime": 1778579154.934384,
+    "ast_hash": "86449824851d22461863abca4d8841a4",
+    "semantic_hash": "86449824851d22461863abca4d8841a4"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/RecoverAccount.tsx": {
+    "mtime": 1780081623.7576451,
+    "ast_hash": "c37b2329ac70f5eb1551a6c6a43ba31c",
+    "semantic_hash": "c37b2329ac70f5eb1551a6c6a43ba31c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/ManageUsers.tsx": {
+    "mtime": 1782754710.5584185,
+    "ast_hash": "e8c38d277dd6918ba8192606f0629d3a",
+    "semantic_hash": "e8c38d277dd6918ba8192606f0629d3a"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/Signup.tsx": {
+    "mtime": 1782779617.2684386,
+    "ast_hash": "bedc940e4cc13f76a705f042862dc0fc",
+    "semantic_hash": "bedc940e4cc13f76a705f042862dc0fc"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/pages/Profile.tsx": {
+    "mtime": 1782842237.4610555,
+    "ast_hash": "15d7e23320447aff8120c0bc0557e676",
+    "semantic_hash": "15d7e23320447aff8120c0bc0557e676"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/recovery.service.ts": {
+    "mtime": 1782754577.9795425,
+    "ast_hash": "391c77bd80240b48ea7cb0e0a89a555e",
+    "semantic_hash": "391c77bd80240b48ea7cb0e0a89a555e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/lifecycle.service.ts": {
+    "mtime": 1782754576.194041,
+    "ast_hash": "8a752567a9beb8b0c5a430692245dd5d",
+    "semantic_hash": "8a752567a9beb8b0c5a430692245dd5d"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/index.ts": {
+    "mtime": 1780081623.7576597,
+    "ast_hash": "41d079e89f47edf3510aed69968016fc",
+    "semantic_hash": "41d079e89f47edf3510aed69968016fc"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/comments/comments.service.ts": {
+    "mtime": 1782754583.900385,
+    "ast_hash": "6b7b596aa409e745885d6fd544b9be8c",
+    "semantic_hash": "6b7b596aa409e745885d6fd544b9be8c"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/posts/post.service.ts": {
+    "mtime": 1782754582.2327106,
+    "ast_hash": "6714b491fb6447efbaf5dbe088d3cf2d",
+    "semantic_hash": "6714b491fb6447efbaf5dbe088d3cf2d"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/src/services/accounts/delete.service.ts": {
+    "mtime": 1782754565.7355514,
+    "ast_hash": "e283f28c8654a535413f3b62c5eca326",
+    "semantic_hash": "e283f28c8654a535413f3b62c5eca326"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/.claude/settings.local.json": {
+    "mtime": 1782779429.1635926,
+    "ast_hash": "05e1ae0fdb6e4803190d5adb7a684197",
+    "semantic_hash": "05e1ae0fdb6e4803190d5adb7a684197"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/package.json": {
+    "mtime": 1782779430.9367445,
+    "ast_hash": "b1d3d1472c58ada6b111e8e1e614de8e",
+    "semantic_hash": "b1d3d1472c58ada6b111e8e1e614de8e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/tsconfig.json": {
+    "mtime": 1782753970.3021321,
+    "ast_hash": "b29bd80db18fbff2f44be150fec6f87a",
+    "semantic_hash": "b29bd80db18fbff2f44be150fec6f87a"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/index.ts": {
+    "mtime": 1782754095.2762382,
+    "ast_hash": "2f8d5517853d2a86f5813d8f319fc55e",
+    "semantic_hash": "2f8d5517853d2a86f5813d8f319fc55e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/middleware/auth.ts": {
+    "mtime": 1782846664.1422555,
+    "ast_hash": "2a1f5d2b4387984d003cc9bb813c2ad4",
+    "semantic_hash": "2a1f5d2b4387984d003cc9bb813c2ad4"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/lib/email.ts": {
+    "mtime": 1783021940.4967372,
+    "ast_hash": "1e0132ef27928c31da9c5d59843202f4",
+    "semantic_hash": "1e0132ef27928c31da9c5d59843202f4"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/lib/supabase.ts": {
+    "mtime": 1782753991.592236,
+    "ast_hash": "c79ff18c8556658e47a173667cc53594",
+    "semantic_hash": "c79ff18c8556658e47a173667cc53594"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/templates/account-deleted.ts": {
+    "mtime": 1782779490.590193,
+    "ast_hash": "1d0e0bfe5d12ac06ea471fcdf5a6e08e",
+    "semantic_hash": "1d0e0bfe5d12ac06ea471fcdf5a6e08e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/templates/account-disabled.ts": {
+    "mtime": 1782779496.155729,
+    "ast_hash": "ec5ca7d2abf77e2cb0ac81b5b84d05bd",
+    "semantic_hash": "ec5ca7d2abf77e2cb0ac81b5b84d05bd"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/templates/account-recovered.ts": {
+    "mtime": 1782779502.045085,
+    "ast_hash": "f7e99119e5afc4bb195d131f7b04b323",
+    "semantic_hash": "f7e99119e5afc4bb195d131f7b04b323"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/routes/comments.ts": {
+    "mtime": 1782754087.2307177,
+    "ast_hash": "005cef030a9fe7f4bde61f5034e186b2",
+    "semantic_hash": "005cef030a9fe7f4bde61f5034e186b2"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/routes/profiles.ts": {
+    "mtime": 1782754072.585347,
+    "ast_hash": "81af56f07ff560ebfb89223c6f8f36cd",
+    "semantic_hash": "81af56f07ff560ebfb89223c6f8f36cd"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/routes/lifecycle.ts": {
+    "mtime": 1782754062.995984,
+    "ast_hash": "1f0a2af5e88e9d793a951e0a83c31837",
+    "semantic_hash": "1f0a2af5e88e9d793a951e0a83c31837"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/routes/posts.ts": {
+    "mtime": 1782846967.6669512,
+    "ast_hash": "22bb1c325d44e088e8e1f9554f8fe325",
+    "semantic_hash": "22bb1c325d44e088e8e1f9554f8fe325"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/routes/accounts.ts": {
+    "mtime": 1782779522.052752,
+    "ast_hash": "d31b7fdd19fb9b3b33b07eee2e6e006b",
+    "semantic_hash": "d31b7fdd19fb9b3b33b07eee2e6e006b"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/services/recovery.service.ts": {
+    "mtime": 1782754013.3953567,
+    "ast_hash": "dd570e25c79e7f5d7569d7c8ed66fbd7",
+    "semantic_hash": "dd570e25c79e7f5d7569d7c8ed66fbd7"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/services/lifecycle.service.ts": {
+    "mtime": 1782754008.7635548,
+    "ast_hash": "5e8f3df63541eba74e82bbb77e211c18",
+    "semantic_hash": "5e8f3df63541eba74e82bbb77e211c18"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/services/comments/comments.service.ts": {
+    "mtime": 1782754043.7109048,
+    "ast_hash": "4627338ef1210bd2f5e41adceb439e17",
+    "semantic_hash": "4627338ef1210bd2f5e41adceb439e17"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/services/posts/post.service.ts": {
+    "mtime": 1782842800.0885732,
+    "ast_hash": "b4b91d91740822393e64fe1bfc75a3c7",
+    "semantic_hash": "b4b91d91740822393e64fe1bfc75a3c7"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/backend/src/services/accounts/delete.service.ts": {
+    "mtime": 1782754019.8469117,
+    "ast_hash": "e2ce00393f47c2e4b78e4ddcfa1284d1",
+    "semantic_hash": "e2ce00393f47c2e4b78e4ddcfa1284d1"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/pnpm-workspace.yaml": {
+    "mtime": 1782840933.4605412,
+    "ast_hash": "09b1453c0932aad8c1540e2ab9386d7d",
+    "semantic_hash": "09b1453c0932aad8c1540e2ab9386d7d"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/index.html": {
+    "mtime": 1777002614.6515117,
+    "ast_hash": "54809ef94e3f88388a42c1ed5246bafb",
+    "semantic_hash": "54809ef94e3f88388a42c1ed5246bafb"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/README.md": {
+    "mtime": 1777002614.648935,
+    "ast_hash": "f6e3faf55d738cf2affe1b44195f27cf",
+    "semantic_hash": "f6e3faf55d738cf2affe1b44195f27cf"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/rabbit.png": {
+    "mtime": 1777256481.2281713,
+    "ast_hash": "d1813b276733b3bb5ba5ab93fd6024aa",
+    "semantic_hash": "d1813b276733b3bb5ba5ab93fd6024aa"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/chicken.png": {
+    "mtime": 1777256481.2047439,
+    "ast_hash": "614c70ebeb6ccbf9c1751e9a36615457",
+    "semantic_hash": "614c70ebeb6ccbf9c1751e9a36615457"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/panda.png": {
+    "mtime": 1777256481.2228055,
+    "ast_hash": "7bd0fd46808d83a60b7ec2e34c00165e",
+    "semantic_hash": "7bd0fd46808d83a60b7ec2e34c00165e"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/meerkat.png": {
+    "mtime": 1777256481.2194047,
+    "ast_hash": "a11452ec68b72a934468c816df8b4b18",
+    "semantic_hash": "a11452ec68b72a934468c816df8b4b18"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/cat.png": {
+    "mtime": 1777256481.1996284,
+    "ast_hash": "c0440e494bcb4e0b5b1b0e31445dcf1b",
+    "semantic_hash": "c0440e494bcb4e0b5b1b0e31445dcf1b"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/weasel.png": {
+    "mtime": 1777256481.2327049,
+    "ast_hash": "60fac20ee72c333e9a2ba26078e2ff69",
+    "semantic_hash": "60fac20ee72c333e9a2ba26078e2ff69"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/giraffe.png": {
+    "mtime": 1777256481.2109947,
+    "ast_hash": "5d95de8a42a659e235bb2fddce938785",
+    "semantic_hash": "5d95de8a42a659e235bb2fddce938785"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/default.png": {
+    "mtime": 1777579071.8075671,
+    "ast_hash": "5405d77c51fb46a0cbf26cb96fe4da4d",
+    "semantic_hash": "5405d77c51fb46a0cbf26cb96fe4da4d"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/koala.png": {
+    "mtime": 1777256481.2153401,
+    "ast_hash": "3c12508dea70db6ad529d4e9b65b2060",
+    "semantic_hash": "3c12508dea70db6ad529d4e9b65b2060"
+  },
+  "/Users/donchiherve/Desktop/projects/church-app/frontend/public/avatars/bear.png": {
+    "mtime": 1777256481.195037,
+    "ast_hash": "9bac22bc34ee3bdde1ba93501bb69ba5",
+    "semantic_hash": "9bac22bc34ee3bdde1ba93501bb69ba5"
+  }
+}
