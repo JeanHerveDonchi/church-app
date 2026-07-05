@@ -1,5 +1,6 @@
 import Elysia, { t } from 'elysia'
 import { authMiddleware } from '../middleware/auth'
+import { sendWelcomeEmail } from '../lib/email'
 import {
   checkAccountLifecycle,
   fetchProfileByEmail,
@@ -56,29 +57,36 @@ export const lifecycleRoutes = new Elysia({ prefix: '/api/lifecycle' })
   )
 
   // GET /api/lifecycle/:userId/auth-state
-  // Returns { isDeleted, role } — used by authProvider to decide role and deleted state
+  // Returns { isDeleted, role, deletionType } — used by authProvider
   .get(
     '/:userId/auth-state',
     async ({ params, userClient }) => {
       const { data, error: dbError } = await userClient
         .from('profiles')
-        .select('deleted_at, role:roles!profiles_role_id_fkey(name)')
+        .select('deleted_at, deletion_type, role:roles!profiles_role_id_fkey(name)')
         .eq('id', params.userId)
         .maybeSingle()
 
       if (dbError) {
         console.error('Error fetching auth state:', dbError)
-        return { isDeleted: false, role: null }
+        return { isDeleted: false, role: null, deletionType: null }
       }
 
       const profile = data as {
         deleted_at: string | null
+        deletion_type: string | null
         role: { name: string | null } | null
       } | null
 
-      if (!profile) return { isDeleted: false, role: null }
+      if (!profile) return { isDeleted: false, role: null, deletionType: null }
 
-      if (profile.deleted_at) return { isDeleted: true, role: null }
+      if (profile.deleted_at) {
+        return {
+          isDeleted: true,
+          role: null,
+          deletionType: profile.deletion_type ?? null,
+        }
+      }
 
       const roleName = profile.role?.name ?? null
       const validRole =
@@ -86,7 +94,22 @@ export const lifecycleRoutes = new Elysia({ prefix: '/api/lifecycle' })
           ? roleName
           : null
 
-      return { isDeleted: false, role: validRole }
+      return { isDeleted: false, role: validRole, deletionType: null }
     },
     { params: t.Object({ userId: t.String() }) },
+  )
+
+  // POST /api/lifecycle/send-welcome
+  // Fire-and-forget welcome email — called when a new user first authenticates
+  .post(
+    '/send-welcome',
+    async ({ body }) => {
+      sendWelcomeEmail(body.email)
+      return { ok: true }
+    },
+    {
+      body: t.Object({
+        email: t.String(),
+      }),
+    },
   )

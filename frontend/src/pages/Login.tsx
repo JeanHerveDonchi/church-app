@@ -29,6 +29,9 @@ function Login() {
     // Show message passed via navigation state (e.g. from admin-delete redirect)
     (location.state as { message?: string } | null)?.message ?? null,
   )
+  const [recoverySuccess, setRecoverySuccess] = useState(
+    (location.state as { recovered?: boolean } | null)?.recovered ?? false,
+  )
   const [isCheckingLifecycle, setIsCheckingLifecycle] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
@@ -39,8 +42,8 @@ function Login() {
   }
 
   // Called on email field blur — checks lifecycle before the user even submits.
-  // Self-deleted → auto-redirects to /recover.
-  // Admin-deleted → auto-redirects here with a block message.
+  // Admin-deleted → auto-redirects to /login with a block message.
+  // Self-deleted → does nothing — login proceeds, AccountGate catches after auth.
   // Active / unknown → does nothing, login proceeds normally.
   const handleEmailBlur = async () => {
     if (!email || validateEmail(email)) return
@@ -185,6 +188,12 @@ function Login() {
                 value={password}
               />
 
+              {recoverySuccess ? (
+                <p className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  Compte restauré avec succès. Vous pouvez vous connecter.
+                </p>
+              ) : null}
+
               {formError ? (
                 <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {formError}
@@ -207,6 +216,15 @@ function Login() {
                 to={buildAuthPath('/signup', redirectPath)}
               >
                 Creer un compte
+              </Link>
+            </p>
+
+            <p className="text-sm text-stone-500">
+              <Link
+                className="font-medium text-stone-950 transition hover:text-stone-700"
+                to="/"
+              >
+                Entrer en tant qu&apos;invite
               </Link>
             </p>
           </div>

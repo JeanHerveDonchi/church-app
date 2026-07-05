@@ -23,7 +23,7 @@ type MenuAction = {
 }
 
 export function Navbar({ title = 'THC Global' }: NavbarProps) {
-  const { loading, role, user } = useAuth()
+  const { loading, role, user, deletionType } = useAuth()
   const { dialogProps: fullNameDialogProps, requireFullName } =
     useRequireFullName()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -152,7 +152,7 @@ export function Navbar({ title = 'THC Global' }: NavbarProps) {
       label: 'Chargement...',
       onClick: () => {},
     })
-  } else if (!user) {
+  } else if (!user || deletionType) {
     actions.push({
       label: 'Se connecter',
       onClick: handleLogin,

@@ -13,15 +13,19 @@ import { apiFetch } from '../lib/api'
 
 type Role = 'user' | 'admin' | 'super_admin'
 
+type DeletionType = 'self_deleted' | 'admin_deleted' | null
+
 type AuthContextType = {
   session: Session | null
   user: User | null
   role: Role | null
+  deletionType: DeletionType
   loading: boolean
 }
 
 type AuthProfileState = {
   isDeleted: boolean
+  deletionType: DeletionType
   role: Role | null
 }
 
@@ -34,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<Role | null>(null)
+  const [deletionType, setDeletionType] = useState<DeletionType>(null)
   const [loading, setLoading] = useState(true)
 
   const isMountedRef = useRef(true)
@@ -42,22 +47,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     userId: null,
     role: null,
   })
+  const welcomeEmailSentRef = useRef<Set<string>>(new Set())
 
   // Fetches deleted state and role from the backend — no direct Supabase DB call
   const fetchAuthProfileState = async (
     userId: string,
   ): Promise<AuthProfileState> => {
     try {
-      const data = await apiFetch<{ isDeleted: boolean; role: string | null }>(
-        `/api/lifecycle/${userId}/auth-state`,
-      )
+      const data = await apiFetch<{
+        isDeleted: boolean
+        deletionType: string | null
+        role: string | null
+      }>(`/api/lifecycle/${userId}/auth-state`)
       return {
         isDeleted: data.isDeleted,
+        deletionType: (data.deletionType === 'self_deleted' || data.deletionType === 'admin_deleted')
+          ? data.deletionType
+          : null,
         role: isRole(data.role) ? data.role : null,
       }
     } catch (err) {
       console.error('Error fetching auth profile state:', err)
-      return { isDeleted: false, role: null }
+      return { isDeleted: false, deletionType: null, role: null }
     }
   }
 
@@ -71,6 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!nextUser) {
       cachedRoleRef.current = { userId: null, role: null }
       setRole(null)
+      setDeletionType(null)
       setLoading(false)
       return
     }
@@ -93,17 +105,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
-    // If profile is deleted, let the lifecycle hook handle the redirect
-    if (nextProfileState.isDeleted) {
+    // Admin-deleted: sign the user out entirely
+    if (nextProfileState.isDeleted && nextProfileState.deletionType === 'admin_deleted') {
+      await supabase.auth.signOut()
+      return
+    }
+
+    // Self-deleted: keep user + session (needed for recovery), clear role
+    if (nextProfileState.isDeleted && nextProfileState.deletionType === 'self_deleted') {
       cachedRoleRef.current = { userId: null, role: null }
+      setDeletionType('self_deleted')
       setRole(null)
       setLoading(false)
       return
     }
 
+    // Unknown deletion type — treat as admin-deleted
+    if (nextProfileState.isDeleted) {
+      await supabase.auth.signOut()
+      return
+    }
+
     cachedRoleRef.current = { userId: nextUser.id, role: nextProfileState.role }
     setRole(nextProfileState.role)
+    setDeletionType(null)
     setLoading(false)
+
+    if (nextUser.email && !welcomeEmailSentRef.current.has(nextUser.id)) {
+      welcomeEmailSentRef.current.add(nextUser.id)
+      apiFetch('/api/lifecycle/send-welcome', {
+        method: 'POST',
+        body: JSON.stringify({ email: nextUser.email }),
+      }).catch(() => {})
+    }
   })
 
   // supabase.auth.getSession() and onAuthStateChange are auth-only — stay in frontend
@@ -142,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, user, role, loading }}>
+    <AuthContext.Provider value={{ session, user, role, deletionType, loading }}>
       {children}
     </AuthContext.Provider>
   )

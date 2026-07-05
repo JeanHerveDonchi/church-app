@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
 import { Navbar } from '@/components/Navbar'
 import { PasswordField } from '@/components/PasswordField'
@@ -25,6 +25,7 @@ type TouchedState = {
 
 function Signup() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { loading, user } = useAuth()
   const { checkEmailLifecycle } = useAuthFlow()
 
@@ -66,7 +67,10 @@ function Signup() {
 
     setIsCheckingLifecycle(true)
     try {
-      await checkEmailLifecycle(email)
+      const result = await checkEmailLifecycle(email)
+      if (result?.state === 'self_deleted') {
+        navigate('/recover', { state: { email } })
+      }
     } finally {
       setIsCheckingLifecycle(false)
     }

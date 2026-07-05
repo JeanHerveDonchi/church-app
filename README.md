@@ -1,315 +1,105 @@
-# 📱 Church Library Web App (MVP)
+# Church Library Web App — THC Global
 
-A mobile-first web application that allows a church community to share and access spiritual content including text posts, videos, and audio messages.
+A church community content platform with guest-accessible public content, role-gated publishing and commenting, and a soft-delete account lifecycle with self-service recovery. French-language UI (single-audience deployment). Built with a Backend-for-Frontend architecture on Supabase.
 
----
-
-## 🚀 Overview
-
-This platform enables:
-- Admins to publish content (text, video, audio)
-- Users to engage via comments
-- Guests to freely access content without an account
-
-The goal is to provide a **simple, accessible, and low-friction experience** for non-technical users.
-
----
-
-## 🧠 Core Features
-
-### 👥 Roles & Permissions
-
-| Role        | Capabilities |
-|-------------|-------------|
-| Guest       | View content, view comments |
-| User        | Comment on posts |
-| Admin       | Create, update, delete posts |
-| Super Admin | Manage users, assign roles, delete users |
-
----
-
-### 📌 Content Types
-
-- 📝 Text (rich text)
-- 📺 Video (via YouTube links)
-- 🎧 Audio (via SoundCloud links)
-
----
-
-### 💬 Comments
-
-- Authenticated users can add comments
-- All users (including guests) can view comments
-- Users can delete their own comments
-
----
-
-### 🔗 Sharing
-
-Each post has a unique shareable link:
+## Architecture
 
 ```
-/post/:id
+                  ┌──────────────────────────┐
+                  │      Supabase (SaaS)      │
+                  │  ┌──────────────────────┐ │
+                  │  │  PostgreSQL + RLS     │ │
+                  │  │  auth.users (identity)│ │
+                  │  │  public.profiles      │ │
+                  │  │  public.posts         │ │
+                  │  │  public.comments      │ │
+                  │  └──────────────────────┘ │
+                  └──────▲──────────▲─────────┘
+                   JWT   │          │  JWT
+          ┌──────────────┴──┐   ┌──┴──────────────┐
+          │  Backend (3000) │   │  Frontend (5173) │
+          │  ElysiaJS 1.x   │   │  React 19        │
+          │  TypeScript 5    │   │  TypeScript 5    │
+          │                 │   │                  │
+          │  · JWT validate │   │  · Auth only     │
+          │  · RPC calls    │◄──┤    (signIn,      │
+          │  · Email (Resend)│  │     signOut,     │
+          │  · Data queries │   │     OAuth,       │
+          │                 │   │     onStateChange)│
+          └──────────────────┘   └──────────────────┘
 ```
 
----
-
-### 🔐 Authentication
-
-- Google Authentication via Supabase
-- Optional login (guest access supported)
+All data operations route through the backend. The frontend Supabase client handles authentication exclusively — it never executes queries, RPCs, or any database operations against Supabase. This keeps database credentials server-side while preserving Row-Level Security (the backend forwards the user's JWT to Supabase, so RLS sees the real caller).
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
-### Backend
-- Supabase
-- PostgreSQL Database
-- Authentication (Google OAuth)
-- Row Level Security (RLS)
-
-### Media Platforms
-- YouTube (video hosting)
-- SoundCloud (audio hosting)
-
-### Frontend
-- Angular / React (TBD)
-- Mobile-first UI design
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, TypeScript 5, Vite 6, Tailwind CSS 4 |
+| State & caching | TanStack React Query 5 |
+| Routing | React Router 7 |
+| Rich text | TipTap 3 |
+| Icons | Lucide React |
+| Backend | ElysiaJS 1.x, TypeScript 5, tsx (dev + runtime) |
+| Email | Resend (fire-and-forget, gracefully degraded) |
+| Database | PostgreSQL via Supabase, Row-Level Security |
+| Auth | Supabase Auth (Google OAuth + email/password) |
+| Package manager | pnpm 8+ workspaces |
 
 ---
 
-## 🗄️ Database Structure
+## Prerequisites
 
-### Tables
+- **Node.js** ≥ 20
+- **pnpm** ≥ 8 (`npm install -g pnpm`)
+- A **Supabase** project with auth enabled (Google OAuth optional)
 
-| Table      | Description |
-|------------|-------------|
-| `roles`    | User roles (`user`, `admin`, `super_admin`) |
-| `profiles` | User profiles (linked to auth.users) |
-| `posts`    | Content (text, video, audio) |
-| `comments` | User comments |
+---
 
-### Key Relationships
+## Getting Started
 
-```
-auth.users
-↓
-profiles ─── roles
-↓
-posts
-↓
-comments
+```bash
+git clone <repo-url> church-app
+cd church-app
+pnpm install
 ```
 
----
+### Environment
 
-## 🔒 Security (RLS)
-
-Row Level Security (RLS) is used to enforce:
-
-- Public read access to posts and comments
-- Authenticated users can create comments
-- Admins can manage posts
-- Super admins can manage users and roles
-- Users can delete their own accounts
-
----
-
-## ⚙️ Key Design Decisions
-
-### ✅ External Media Handling
-
-- Videos → YouTube embeds
-- Audio → SoundCloud embeds
-
-**Why?**
-- Avoid storage and bandwidth costs
-- Ensure cross-device compatibility
-- Simplify backend complexity
-
-### ✅ No In-App Recording (MVP)
-
-Recording audio/video inside the browser is intentionally excluded to:
-- Reduce complexity
-- Improve reliability on low-end devices
-- Speed up development
-
-### ✅ Soft Deletion Strategy (Account & Content)
-
-**Account Deletion:**
-- User profiles use soft delete (`deleted_at` timestamp)
-- Auth identity remains intact (no email issues with OAuth)
-- Content ownership preserved (for moderation & audit)
-- Users cannot recover deleted accounts in MVP
-- Super-admins can delete users/admins (but not other super-admins)
-
-**How It Works:**
-1. User clicks "Supprimer mon compte" in profile settings
-2. Warning modal: "Cette action est irréversible"
-3. Confirmation modal: Enter your email to verify (in-app only, no email link needed)
-4. If email matches, delete button enables
-5. On confirm: Account soft-deleted, user signed out, redirected to login
-
-**For Super-Admin Delete:**
-1. Super-admin finds user in "Gérer les utilisateurs"
-2. Clicks trash icon on user
-3. Warning modal
-4. Confirmation modal: Enter both emails (admin + target user)
-5. Both must match for delete button to enable
-6. On confirm: Target account soft-deleted, removed from list
-
-**Content Preservation:**
-- Posts use `is_deleted` flag
-- User deletion does **not** remove posts/comments
-- Deleted users display as "Utilisateur supprimé" in comments/posts
-
----
-
-## 🎨 UI / UX Principles
-
-- Mobile-first design
-- Black & white minimalist interface
-- Simple navigation
-- Clear French labels (no localization yet)
-- No clutter, no unnecessary features
-
----
-
-## ❌ Out of Scope (MVP)
-
-- Notifications
-- Likes / reactions
-- Advanced search
-- File uploads (direct)
-- In-app recording
-- Offline mode
-- Analytics
-
----
-
-## ⚠️ Known Limitations
-
-- Deleted users leave content without author reference
-- Media downloads depend on external platforms
-- No moderation system (beyond admin delete)
-
----
-
-## 👤 Account Management
-
-### Authentication & Identity Separation
-
-The app intentionally separates:
-- **`auth.users`** = Authentication identity (can this user log in?)
-- **`public.profiles`** = Application identity (is this user allowed to use the app?)
-
-This separation prevents OAuth corruption and enables safe account recovery in future versions.
-
-### Account Deletion Flow
-
-#### Self-Delete (User Profile Page)
-
-```
-1. User clicks "Supprimer mon compte"
-2. Warning modal: "Cette action est irréversible"
-   ↓
-3. Confirmation modal: Enter your email
-   - Email validation happens in-app (AJAX on blur)
-   - No email link required
-   - Delete button disabled until email matches
-   ↓
-4. User confirms deletion
-   ↓
-5. Backend action:
-   - Profile soft-deleted (deleted_at = now())
-   - Profile anonymized (full_name → "Deleted User", avatar → null)
-   - Email preserved (for recovery in v2)
-   ↓
-6. Frontend action:
-   - User signed out
-   - Session cleared
-   - Redirected to /login
+**`backend/.env`**
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+PORT=3000
+# Email is optional — sendEmail() silently returns if these are missing
+RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM_EMAIL=noreply@yourdomain.com
 ```
 
-#### Super-Admin Delete (Manage Users Page)
-
-```
-1. Super-admin finds user via search
-2. Clicks trash icon on user card
-3. Warning modal: "Supprimer ce compte ?"
-   ↓
-4. Confirmation modal: Enter TWO emails
-   - Admin's email (requester)
-   - Target user's email (who to delete)
-   - Both validated in-app (AJAX on blur)
-   - Delete button disabled until both match
-   ↓
-5. Super-admin confirms deletion
-   ↓
-6. Backend action:
-   - Target profile soft-deleted
-   - Profile anonymized
-   - Email preserved
-   ↓
-7. Frontend action:
-   - User removed from search results
-   - Success message shown
+**`frontend/.env`**
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
-### Account States
+### Database setup
 
-| State | deleted_at | Access | Recovery |
-|-------|-----------|--------|----------|
-| Active | NULL | Full app access | N/A |
-| Self-Deleted | SET | Blocked (RLS) | v2 feature |
-| Admin-Deleted | SET | Blocked (RLS) | Not recoverable |
+Run the SQL schema setup in the Supabase SQL Editor (the project has no migration runner in MVP). The database requires:
 
-### Security & RLS
+- **Schema:** `roles`, `profiles`, `posts`, `comments`, `content_types`, `post_statuses` tables with constraints and partial unique indexes
+- **Triggers:** `handle_new_user()` for auto-creating profile rows on signup
+- **Functions:** `is_active_user()`, `get_user_role()` helpers
+- **RLS policies:** ~20 policies covering reads for guests, writes for active authenticated users, admin/super-admin management
+- **RPCs:** `delete_account()`, `recover_account()`, `ensure_user_profile()`
 
-- RLS policies enforce `is_active_user()` check
-- Deleted users cannot create/update content
-- Deleted users cannot comment
-- Email confirmation prevents accidental deletion
-- Super-admin cannot delete other super-admins
+The full setup SQL is maintained privately. Contact the project maintainer for access.
 
-### Email Confirmation Details
+> The live database runs `recover_account(user_id uuid, user_email text)` with server-side email confirmation. An earlier reference version (no params, relies on `auth.uid()` only) also exists — both restore the same profile fields.
 
-**Important:** Email confirmation is **100% in-app, no email verification link required.**
-
-- User enters their email in the confirmation modal
-- System compares it to their stored email (real-time validation)
-- Visual feedback: green checkmark when email matches
-- Delete button only enables when email is verified
-- No external email communication
-
-This keeps the flow simple while preventing accidents.
-
----
-
-## 🧪 Future Improvements (v2)
-
-- **Account Recovery** - Allow users to restore self-deleted accounts
-- Media upload support (Supabase Storage)
-- In-app audio/video recording
-- Admin dashboard enhancements
-- Comment moderation tools
-- Push notifications
-- Mobile app (iOS / Android)
-- Deletion audit log & analytics
-
----
-
-## 🛠️ Setup (Backend)
-
-1. Create a project in Supabase
-2. Run the SQL schema script
-3. Enable Google Auth
-4. Assign first `super_admin` manually
-
----
-
-## 🔑 First Super Admin Setup
+After your first sign-up, promote yourself to super admin:
 
 ```sql
 UPDATE profiles
@@ -319,19 +109,225 @@ WHERE email = 'your-email@example.com';
 
 ---
 
-## 📌 Project Status
+## Development
 
-🚧 MVP in development  
-🎯 Goal: Deliver a functional, simple, and reliable content platform
+```bash
+# Start both services (from workspace root)
+pnpm dev
+
+# Or individually
+pnpm dev:frontend   # Vite → http://localhost:5173
+pnpm dev:backend    # tsx watch → http://localhost:3000
+```
+
+### Production build
+```bash
+cd frontend && pnpm build   # TypeScript check + Vite production bundle
+cd backend  && pnpm build   # TypeScript check (no emit, tsx runs the source)
+```
+
+### Linting
+```bash
+cd frontend && pnpm lint    # ESLint (flat config with TypeScript + React plugins)
+```
 
 ---
 
-## 🤝 Contribution
+## Features
 
-This project is currently in early development. Contributions and suggestions are welcome after MVP stabilization.
+### Content types
+- **Blog posts** — Rich text via TipTap 3
+- **Videos** — YouTube embeds (no direct upload)
+- **Audio** — SoundCloud embeds (no direct upload)
+
+External media hosting (YouTube/SoundCloud) was chosen deliberately to avoid storage and bandwidth costs, ensure cross-device playback compatibility, and simplify the backend. In-app recording is explicitly excluded from MVP.
+
+### Roles & permissions
+
+| Role | Capabilities |
+|------|-------------|
+| Guest | View published content and comments (no account) |
+| User | Comment on posts, manage profile |
+| Admin | Create, edit, delete posts |
+| Super admin | Manage users via email/name search, delete user/admin accounts |
+
+The login page includes an "Entrer en tant qu'invité" link for browsing without authentication.
+
+### Account lifecycle — delete & recover
+
+| State | `deleted_at` | `deletion_type` | Access | Recoverable |
+|-------|-------------|-----------------|--------|-------------|
+| Active | NULL | NULL | Full | — |
+| Self-deleted | SET | `self_deleted` | Redirected to `/recover` | Yes |
+| Admin-deleted | SET | `admin_deleted` | Signed out + blocked | No (MVP) |
+
+**Self-delete:** Profile page → warning modal → email confirmation modal (validated in-app, no email link required) → soft delete via `delete_account()` RPC → session cleared → redirected to `/login`.
+
+**Recovery:**
+1. User logs in with correct credentials (email/password or Google OAuth)
+2. `authProvider` detects `deleted_at != null, deletion_type = 'self_deleted'` → sets `deletionType` in context, keeps session alive
+3. `AccountGate` (global route wrapper) sees authenticated + self-deleted → redirects to `/recover`
+4. Recovery page shows "Compte désactivé. Souhaitez-vous le restaurer ?" with a "Restaurer" button
+5. `recover_account()` RPC restores the profile (clears `deleted_at`, `deletion_type`, nullifies `full_name` to remove the "Deleted User" placeholder)
+6. Signs out to clear stale `deletionType` from auth state → navigates to `/login` with a green "Compte restauré avec succès" banner
+7. User logs in fresh as an active account
+
+**Gating:** `AccountGate` wraps all routes at the `App` level. Self-deleted authenticated users cannot reach any page except `/recover`, `/login`, and `/signup`. Admin-deleted users are signed out immediately by `authProvider` — if they managed to authenticate, `AccountGate` redirects them to `/login` with a block message.
+
+**Notable design decisions:**
+- `auth.users` is never deleted — prevents OAuth identity corruption and auth provider desynchronization
+- Email preserved on deleted profiles for recovery lookups (partial unique index: one active profile per email, deleted profiles retain their email)
+- `full_name` nullified on recovery to clear the "Deleted User" placeholder set during delete
+- Self-deleted users keep their Supabase session (needed for the authenticated `POST /api/accounts/recover` call); admin-deleted users are signed out immediately
+- Unauthenticated users who visit `/recover` directly see a login prompt instead of an access-denied screen
+
+### Email notifications
+
+Three transactional templates (Resend): account deleted (self), account disabled (admin), account recovered.
+
+Email is fire-and-forget with graceful degradation:
+```typescript
+const getClient = (): Resend | null => {
+  if (!process.env.RESEND_API_KEY) return null   // ← no crash, no log
+  // ...
+}
+
+export const sendEmail = (params: SendEmailParams): void => {
+  const resend = getClient()
+  if (!resend) return   // ← silently skip when key is missing
+  // ...
+}
+```
+Email failures never block account operations. Adding a `RESEND_API_KEY` is all that's needed to enable sending — no code changes required.
 
 ---
 
-## 📄 License
+## Security
 
-TBD
+### Backend-for-Frontend
+Supabase credentials (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) are stored exclusively in `backend/.env`. The frontend never sees them. The frontend's Supabase client is scoped to auth-only operations (sign-in, sign-up, sign-out, OAuth, `onAuthStateChange`) — it never queries the database.
+
+### JWT forwarding
+The backend extracts the JWT from `Authorization: Bearer <token>`, validates it with Supabase, then creates a per-request Supabase client with that token:
+```typescript
+export const createUserClient = (token: string) =>
+  createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  })
+```
+Row-Level Security evaluates against the real user — RLS policies are fully enforced even though queries go through the backend.
+
+### Auth middleware
+```typescript
+const extractAuth = derive({ as: 'global' }, async ({ headers }) => {
+  // Extracts JWT, validates, returns { userId, userEmail, userClient }
+  // Returns null values for unauthenticated requests — never throws
+})
+
+export const authMiddleware = onBeforeHandle({ as: 'scoped' }, ({ userId, status }) => {
+  if (!userId) return status(401, { message: 'Authentification requise.' })
+})
+```
+
+### Duplicate account prevention
+```sql
+CREATE UNIQUE INDEX profiles_email_active_unique
+  ON profiles (email) WHERE deleted_at IS NULL;
+```
+One active profile per email. Deleted profiles retain their email for recovery and moderation lookups.
+
+### Database-level lifecycle consistency
+```sql
+CONSTRAINT deletion_state_consistency CHECK (
+  (deleted_at IS NULL AND deletion_type IS NULL)
+  OR
+  (deleted_at IS NOT NULL AND deletion_type IS NOT NULL)
+)
+```
+Partial lifecycle states are impossible at the database level.
+
+### RLS write enforcement
+All write policies check `is_active_user()` — a `SECURITY DEFINER` function that returns true only when the caller's profile has `deleted_at IS NULL`. Even if a deleted user's JWT is still valid, RLS blocks writes. This is defense-in-depth: `AccountGate` handles it at the frontend, RLS catches any edge case at the database.
+
+---
+
+## Database Design Highlights
+
+### Identity decoupling
+`auth.users` (authentication) and `public.profiles` (application access) are intentionally decoupled. Their IDs match by convention — enforced by the `handle_new_user()` trigger, not by a foreign key. This enables soft deletion without touching `auth.users` and allows the application to independently determine access based on `profiles.deleted_at`.
+
+### Profile creation flow
+```sql
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user();
+```
+New signups (email/password or OAuth) automatically create a profile row with a random approved avatar and `role = 'user'`. Google OAuth avatar URLs are intentionally discarded — they violate the approved-avatars-only constraint and would leak external CDN dependency.
+
+### Partial unique index on email
+Allows soft-deleted profiles to retain their email (needed for recovery email lookup and moderation) while preventing duplicate active signups with the same email.
+
+---
+
+## Project Structure
+
+```
+church-app/
+├── pnpm-workspace.yaml
+├── package.json                    # Workspace root with dev scripts
+├── .gitignore
+├── backend/
+│   ├── src/
+│   │   ├── index.ts                # ElysiaJS app entry point
+│   │   ├── lib/
+│   │   │   ├── supabase.ts         # Anon client + createUserClient(token)
+│   │   │   └── email.ts            # Lazy-init Resend client + sendEmail()
+│   │   ├── middleware/
+│   │   │   └── auth.ts             # JWT extraction (global) + enforcement (scoped)
+│   │   ├── routes/
+│   │   │   ├── accounts.ts         # POST /api/accounts/delete, /recover
+│   │   │   ├── lifecycle.ts        # GET auth-state, by-email, user/:userId, ensure-profile
+│   │   │   ├── profiles.ts         # GET/PUT /me, /search, /post-count
+│   │   │   ├── posts.ts            # CRUD posts + published feed
+│   │   │   └── comments.ts         # GET by post, POST, DELETE
+│   │   ├── services/               # Per-route business logic
+│   │   └── templates/              # 3 HTML email templates (Resend)
+│   └── tsconfig.json
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                 # AccountGate + route definitions
+│   │   ├── providers/
+│   │   │   ├── authProvider.tsx    # Auth state, deletionType, role, session caching
+│   │   │   └── supabaseClient.ts   # Auth-only Supabase client
+│   │   ├── hooks/                  # 15 React Query + custom hooks
+│   │   ├── services/               # apiFetch wrappers — no direct Supabase calls
+│   │   ├── components/
+│   │   │   ├── ProtectedRoute.tsx  # Active-account route guard
+│   │   │   ├── AccountDeletionDialog.tsx  # Multi-step: warning → email confirmation
+│   │   │   ├── Navbar.tsx          # Role-aware: guests + deleted → "Se connecter"
+│   │   │   └── posts/              # PostCard, PostDetail, PostFeed, composer
+│   │   ├── pages/                  # Home, Login, Signup, Profile, ManageUsers, Recover
+│   │   ├── features/               # Auth helpers, post utilities, profile formatters
+│   │   └── lib/api.ts              # Generic fetch with auto-JWT attachment
+│   ├── vite.config.ts
+│   ├── eslint.config.js            # Flat config: TS + React Hooks + Refresh
+│   └── tsconfig.json
+```
+
+---
+
+## Testing
+
+The project is in active MVP development. No test suite exists yet. When tests are added, the recommended approach:
+
+- **Backend:** Vitest for unit/integration tests on route handlers and services, with a Supabase local development instance for database-level testing
+- **Frontend:** Vitest + React Testing Library for component tests, MSW for API mocking
+- **E2E:** Playwright for critical user flows (signup, login, self-delete, recovery)
+
+---
+
+## Browser Support
+
+Mobile-first, responsive design (Tailwind CSS 4). Targeted at modern browsers (Chrome, Firefox, Safari, Edge — last 2 versions). The target audience primarily accesses content on mobile devices.

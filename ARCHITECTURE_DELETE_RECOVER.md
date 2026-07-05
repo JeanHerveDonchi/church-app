@@ -8,31 +8,33 @@ Soft-delete accounts with a recoverable path for self-deleted users and a perman
 
 ## Architecture Context
 
-This feature operates across both layers of the BFF monorepo:
-
-- **Frontend** (`frontend/src/`) — UI, hooks, React Query mutations, auth-only Supabase client
-- **Backend** (`backend/src/`) — ElysiaJS routes, Supabase RPC calls, JWT validation middleware
-
-All data operations (delete RPC, recover RPC, profile lifecycle checks) go through the backend. The frontend never touches Supabase directly for data — only for auth (`signIn`, `signOut`, `onAuthStateChange`).
+This feature operates across all three layers: frontend, backend, and database.
 
 ```
 Frontend                           Backend                        Supabase
 ────────────────────────           ────────────────────────       ────────────────
 AccountDeletionDialog
   → delete.service (apiFetch) ──→  POST /api/accounts/delete ──→  delete_account() RPC
-  
+
 RecoverAccount page
   → recovery.service (apiFetch) → POST /api/accounts/recover ──→  recover_account() RPC
 
-Login/Signup (useAuthFlow)
+Login (useAuthFlow on blur)
   → lifecycle.service (apiFetch) → GET /api/lifecycle/by-email/:email → profiles table
+
+Signup (useAuthFlow on blur)
+  → lifecycle.service (apiFetch) → GET /api/lifecycle/by-email/:email → profiles table
+
+AccountGate (App.tsx, always active)
+  ← reads deletionType from authProvider (no network call)
 
 ProtectedRoute (useAuthLifecycle)
   → lifecycle.service (apiFetch) → GET /api/lifecycle/user/:userId → profiles table
-                                 → POST /api/lifecycle/ensure-profile → ensure_user_profile() RPC
+                                  → POST /api/lifecycle/ensure-profile → ensure_user_profile() RPC
 
-authProvider
+authProvider (syncAuthState)
   → apiFetch ─────────────────→  GET /api/lifecycle/:userId/auth-state → profiles table
+                                  (now returns isDeleted, role, deletionType)
 ```
 
 ---
@@ -42,11 +44,15 @@ authProvider
 | State | `deleted_at` | `deletion_type` | Access | Recoverable |
 |-------|-------------|-----------------|--------|-------------|
 | `active` | NULL | NULL | Full | — |
-| `self_deleted` | SET | `self_deleted` | Read-only (same as guest) | ✅ Yes |
-| `admin_deleted` | SET | `admin_deleted` | Read-only (same as guest) | ❌ No (MVP) |
+| `self_deleted` | SET | `self_deleted` | Read-only via `/recover` only | ✅ Yes |
+| `admin_deleted` | SET | `admin_deleted` | Immediately signed out + blocked | ❌ No (MVP) |
 | `missing_profile` | — | — | None | Auto-recreated |
 
-**Important:** Deleted users retain the same read-only access as unauthenticated guests by design. They can browse posts and content — they just cannot post, comment, or perform any write action. This is enforced by RLS (`is_active_user()` — `deleted_at IS NULL`) on all write operations, and by the backend middleware checking profile state on authenticated write routes.
+**Important:** Deleted users and unauthenticated guests have identical read-only access to public routes (home, posts, post detail). They cannot post, comment, or perform any write action. This is enforced by:
+
+1. **AccountGate** (frontend) — all routes wrapped; self-deleted → redirects to `/recover`, admin-deleted → redirects to `/login` with block message
+2. **RLS** (`is_active_user()` — `deleted_at IS NULL`) on all write operations in the database
+3. **Backend middleware** checking profile state on authenticated write routes
 
 ---
 
@@ -68,10 +74,14 @@ authProvider
 └────────┬────────┘     └──────────────────┘
          │
   User confirms recovery
+  (via /recover page)
          │
          ▼
     ┌─────────────┐
     │   ACTIVE    │
+    │  (signs out │
+    │   after     │
+    │  recovery)  │
     └─────────────┘
 ```
 
@@ -79,39 +89,33 @@ authProvider
 
 ## Delete Flows
 
-### Self-Delete (Profile Page) — ✅ Fully wired
+### Self-Delete — ✅ Fully wired
 
-```
-Profile.tsx
-  → "Supprimer mon compte" button
-  → AccountDeletionDialog (warning modal → email confirmation modal)
-  → Email validation on blur (must match user's stored email)
-  → delete.service.ts → apiFetch POST /api/accounts/delete
-  → backend: delete_account(requesterEmail) RPC
-      - Sets deleted_at = now()
-      - Sets deletion_type = 'self_deleted'
-      - Anonymizes: full_name → "Deleted User", avatar_url → null
-      - Preserves: email, posts, comments, created_at
-  → Frontend: resetLocalSession() → signOut() → redirect /login
-  → [PLANNED] Email notification: "Votre compte a été supprimé"
-```
+1. User clicks "Supprimer mon compte" on `Profile.tsx`
+2. `AccountDeletionDialog` opens — warning modal → email confirmation modal
+3. Email validated on blur (must match user's stored email)
+4. `delete.service.ts` → `apiFetch POST /api/accounts/delete` with `{ requesterEmail }`
+5. Backend calls `delete_account(requesterEmail)` RPC:
+   - Sets `deleted_at = now()`
+   - Sets `deletion_type = 'self_deleted'`
+   - Anonymizes: `full_name → "Deleted User"`, `avatar_url → null`
+   - Preserves: `email`, `posts`, `comments`, `created_at`
+6. `sendEmail()` fires `accountDeletedTemplate()` (fire-and-forget — silently skips if no API key)
+7. Frontend: `resetLocalSession()` → `supabase.auth.signOut()` → redirect to `/login`
 
-### Admin Delete (ManageUsers Page) — ✅ Fully wired
+### Admin Delete — ✅ Fully wired
 
-```
-ManageUsers.tsx
-  → Trash icon on user card
-  → AccountDeletionDialog (warning modal → 2-email confirmation modal)
-  → Both emails validated on blur (admin's email + target user's email)
-  → delete.service.ts → apiFetch POST /api/accounts/delete
-  → backend: delete_account(requesterEmail, targetUserId, targetEmail) RPC
-      - Validates super_admin permission
-      - Validates super_admin cannot delete another super_admin
-      - Sets deletion_type = 'admin_deleted'
-      - Anonymizes target profile
-  → Frontend: removes user from list, shows success message
-  → [PLANNED] Email notification to target: "Votre compte a été désactivé"
-```
+1. Super admin clicks trash icon on user card in `ManageUsers.tsx`
+2. `AccountDeletionDialog` opens — warning modal → 2-email confirmation modal (admin's email + target's email)
+3. Both emails validated on blur
+4. `delete.service.ts` → `apiFetch POST /api/accounts/delete` with `{ requesterEmail, targetUserId, targetEmail }`
+5. Backend calls `delete_account(requesterEmail, targetUserId, targetEmail)` RPC:
+   - Validates super_admin permission
+   - Validates super_admin cannot delete another super_admin
+   - Sets `deletion_type = 'admin_deleted'`
+   - Anonymizes target profile
+6. `sendEmail()` fires `accountDisabledTemplate()` (fire-and-forget)
+7. Frontend: removes user from list, shows success message
 
 ### Authorization Rules
 
@@ -128,155 +132,149 @@ ManageUsers.tsx
 
 ---
 
-## Recovery Flow — ✅ Built, ❌ Not yet wired
+## Recovery Flow — ✅ Fully wired
 
-The full recovery system is implemented but not connected to the router or login flow yet.
+### How a self-deleted user reaches `/recover`
 
-```
-Login.tsx (not yet calling useAuthFlow)
-  → useAuthFlow.checkEmailLifecycle(email)  [PENDING WIRE-UP]
-  → lifecycle.service → apiFetch GET /api/lifecycle/by-email/:email
-  → Profile found with deletion_type = 'self_deleted'
-  → resetLocalSession() → navigate('/recover', { state: { email } })
-  
-RecoverAccount.tsx (route /recover not yet registered in App.tsx)
-  → Email confirmation field (validated on blur)
-  → recovery.service → apiFetch POST /api/accounts/recover
-  → backend: recover_account(userId, email) RPC
-      - Validates self_deleted state
-      - Validates email confirmation
-      - Nullifies deleted_at and deletion_type
-      - Restores active state
-  → Success message → redirect /
-  → [PLANNED] Email notification: "Votre compte a été restauré"
-```
+**Email/password login:**
+1. User enters email + password → submits form
+2. `supabase.auth.signInWithPassword()` — credentials validated by Supabase
+3. If wrong password → error message, no redirect
+4. If correct password → session created
+5. `authProvider.syncAuthState()` fires → calls `GET /api/lifecycle/:userId/auth-state` → detects `isDeleted = true, deletionType = 'self_deleted'`
+6. `setDeletionType('self_deleted')` — keeps `user` + `session` intact (needed for recovery API)
+7. `AccountGate` catches `user + self_deleted + path !== '/recover'` → redirects to `/recover`
 
-**Admin-deleted accounts cannot use this flow.** If `checkEmailLifecycle` detects `admin_deleted`, it redirects to `/login` with a block message instead.
+**Google login:**
+1. User clicks "Connexion avec Google" → OAuth flow → session created
+2. `authProvider.syncAuthState()` fires → same detection as email/password path
+3. `AccountGate` redirects to `/recover`
+
+**Signup (self-deleted email):**
+1. User enters email in signup form → blur triggers `checkEmailLifecycle()`
+2. Profile found with `deletion_type = 'self_deleted'` → immediately navigates to `/recover`
+
+### Recovery page (`/recover`)
+
+**Authenticated user (normal path):**
+1. Shows "Compte désactivé. Il semble que votre compte a été désactivé. Souhaitez-vous le restaurer ?"
+2. "Restaurer mon compte" button → calls `POST /api/accounts/recover`
+3. Backend calls `recover_account(userId, email)` RPC:
+   - Validates `deletion_type = 'self_deleted'`
+   - Validates email match
+   - Sets `deleted_at = null`, `deletion_type = null`, `full_name = null`
+   - Restores `role_id` to default (`user`) if null
+4. On success: `supabase.auth.signOut()` → `navigate('/login', { state: { recovered: true } })`
+5. Login page shows green banner: "Compte restauré avec succès. Vous pouvez vous connecter."
+6. User logs in normally as an active account
+
+**Unauthenticated user (edge case):**
+1. Shows "Connectez-vous pour restaurer votre compte" with a "Se connecter" button → `/login`
+
+**"Annuler" button:** signs out and navigates to `/login`
+
+### Gating — AccountGate
+
+All routes in `App.tsx` are wrapped in `<AccountGate>`. This is the single global enforcement point:
+
+| Condition | Redirect |
+|-----------|----------|
+| `user + deletionType === 'self_deleted' + path !== '/recover'` | → `/recover` |
+| `user + deletionType === 'self_deleted' + path === '/recover'` | ✅ Allowed |
+| `deletionType === 'admin_deleted' + path !== '/login'` | → `/login` with block message |
+| No user | ✅ Allowed (guest) |
+| Active user | ✅ Allowed |
+| `/login` or `/signup` | ✅ Always allowed (prevents redirect loops) |
+
+### Navbar behavior for deleted users
+
+Self-deleted users on `/recover` see "Se connecter" in the navbar (same as guests) instead of "Mon compte". This prevents navigation loops where "Mon compte" → `/profile` → ProtectedRoute → `/recover`.
 
 ---
 
-## Email Notifications (Planned — Not Yet Implemented)
+## AccountGate Architecture
 
-Email service to be added to the backend. Chosen provider: **Resend** (simple REST API, TypeScript SDK, 3k emails/month free tier).
+```
+App.tsx
+├── <AccountGate>                          ← Watches deletionType from authProvider
+│   └── <Routes>
+│       ├── / (Home)                       ← Public — guests & active users
+│       ├── /login                         ← Always allowed
+│       ├── /signup                        ← Always allowed
+│       ├── /recover                       ← Always allowed (self-deleted target)
+│       ├── /posts                         ← Public
+│       ├── /posts/:userId                 ← Public
+│       ├── /posts/post/:postId            ← Public
+│       ├── /profile (ProtectedRoute)      ← Active users only
+│       ├── /manage-users (ProtectedRoute) ← Active super admins only
+│       ├── /posts/create (ProtectedRoute) ← Active users only
+│       └── /posts/post/:postId/edit (ProtectedRoute) ← Active users only
+```
 
-### Planned triggers
+---
 
-| Event | Recipient | Subject |
-|-------|-----------|---------|
-| Self-delete confirmed | Deleted user | "Votre compte THC Global a été supprimé" |
-| Admin-delete | Target user | "Votre compte THC Global a été désactivé" |
-| Recovery confirmed | Recovered user | "Votre compte THC Global a été restauré" |
+## Email Notifications (Resend)
 
-### Planned backend location
+Email service uses **Resend** with fire-and-forget semantics — email failures never block account operations.
+
+### Architecture
 
 ```
 backend/src/
 ├── lib/
-│   └── email.ts          ← Resend client + send helper
+│   └── email.ts          ← Lazy-init Resend client + sendEmail() helper
 ├── templates/
-│   ├── account-deleted.ts
-│   ├── account-disabled.ts
-│   └── account-recovered.ts
+│   ├── account-deleted.ts     ← Sent on self-delete
+│   ├── account-disabled.ts    ← Sent on admin-delete
+│   └── account-recovered.ts   ← Sent on recovery
 └── routes/
-    └── accounts.ts       ← trigger email after RPC success
+    └── accounts.ts       ← Triggers email after RPC success
 ```
 
-Email sends are fire-and-forget — they do not block the RPC response. If the email fails, the operation still succeeds.
+### Graceful degradation
+
+When `RESEND_API_KEY` is not set in `.env`, `getClient()` returns `null` and `sendEmail()` silently returns — no crashes, no logs. Email is fully optional. Add the key whenever ready and emails start sending immediately.
+
+### Templates
+
+| Template | Trigger | Recipient | Subject |
+|----------|---------|-----------|---------|
+| `accountDeletedTemplate()` | Self-delete confirmed | Deleted user | "Votre compte THC Global a été supprimé" |
+| `accountDisabledTemplate()` | Admin-delete | Target user | "Votre compte THC Global a été désactivé" |
+| `accountRecoveredTemplate()` | Recovery confirmed | Recovered user | "Votre compte THC Global a été restauré" |
 
 ---
 
 ## Lifecycle Enforcement
 
-### ProtectedRoute — ✅ Built, ❌ Not yet used in App.tsx
+### AccountGate (App.tsx)
+Top-level wrapper. Reads `deletionType` from `authProvider`. Catches all deleted authenticated users before any route renders. Self-deleted → `/recover`. Admin-deleted → `/login` with block message.
 
-Wraps pages that require an active account. Unauthenticated users → `/login`. Deleted users → redirect based on deletion type.
-
-```tsx
-// Pending: wrap these routes in App.tsx
-<ProtectedRoute><Profile /></ProtectedRoute>
-<ProtectedRoute><ManageUsers /></ProtectedRoute>
-<ProtectedRoute><CreatePostFlow /></ProtectedRoute>
-<ProtectedRoute><EditPost /></ProtectedRoute>
-```
-
-### useAuthLifecycle — ✅ Built
-
-Used by `ProtectedRoute`. Calls `GET /api/lifecycle/user/:userId`, handles all states:
+### ProtectedRoute (wraps `/profile`, `/manage-users`, `/posts/create`, `/posts/post/:id/edit`)
+Uses `useAuthLifecycle.checkAndResolve()` for defense-in-depth:
+- Unauthenticated → `/login`
 - `active` → allow access
 - `self_deleted` → redirect `/recover`
 - `admin_deleted` → redirect `/login` with block message
-- `missing_profile` → call `POST /api/lifecycle/ensure-profile`, retry
-- error → redirect `/login`
+- `missing_profile` → auto-recreate via `ensure_user_profile()`, retry
+- Error → redirect `/login`
 
-### useAuthFlow — ✅ Built, ❌ Not yet called in Login/Signup
-
-Pre-auth email check. Call on email blur or before submit. Redirects before login attempt if account is deleted.
-
-```tsx
-const { checkEmailLifecycle } = useAuthFlow()
-const lifecycle = await checkEmailLifecycle(email)
-// auto-redirects if self_deleted or admin_deleted
-// returns lifecycle result if active or missing
-```
-
----
-
-## Pending Wiring Tasks
-
-| Task | File | What to do |
-|------|------|------------|
-| Register `/recover` route | `frontend/src/App.tsx` | Add `<Route path="/recover" element={<RecoverAccount />} />` |
-| Wrap protected routes | `frontend/src/App.tsx` | Wrap `/profile`, `/manage-users`, `/posts/create`, `/posts/post/:id/edit` with `<ProtectedRoute>` |
-| Wire pre-auth lifecycle check | `frontend/src/pages/Login.tsx` | Call `useAuthFlow().checkEmailLifecycle(email)` on blur / before submit |
-| Wire pre-auth lifecycle check | `frontend/src/pages/Signup.tsx` | Same as Login |
-| Add email service | `backend/src/lib/email.ts` | Resend client, fire after RPC success in accounts route |
-| Create `recover_account()` RPC | Supabase DB | See spec below |
-| Create `ensure_user_profile()` RPC | Supabase DB | See spec below |
-
----
-
-## Database Requirements
-
-### `delete_account()` — ✅ Exists and working
-```sql
-delete_account(
-  requester_email text,
-  target_user_id  uuid default null,
-  target_email    text default null
-) returns jsonb
-```
-
-### `recover_account()` — ⚠️ Must be created
-```sql
-recover_account(
-  user_id    uuid,
-  user_email text
-) returns void
-```
-Behavior: validate `deletion_type = 'self_deleted'`, validate email match, set `deleted_at = null`, set `deletion_type = null`.
-
-### `ensure_user_profile()` — ⚠️ Must be created
-```sql
-ensure_user_profile(
-  user_id    uuid,
-  user_email text
-) returns void
-```
-Behavior: insert into `public.profiles` with `role = 'user'`, `deleted_at = null` if no profile exists for `user_id`.
+### Navbar
+Self-deleted users (via `deletionType` from `authProvider`) see "Se connecter" instead of "Mon compte". Prevents navigation loops to `/profile`.
 
 ---
 
 ## Service Layer
 
 ### Backend routes (`backend/src/routes/accounts.ts`)
-- `POST /api/accounts/delete` — auth required, calls `delete_account()` RPC
-- `POST /api/accounts/recover` — auth required, calls `recover_account()` RPC
+- `POST /api/accounts/delete` — auth required, calls `delete_account()` RPC, sends email
+- `POST /api/accounts/recover` — auth required, calls `recover_account()` RPC, sends email
 
 ### Backend routes (`backend/src/routes/lifecycle.ts`)
-- `GET /api/lifecycle/by-email/:email` — public, used before login
+- `GET /api/lifecycle/by-email/:email` — public, used before login/signup
 - `GET /api/lifecycle/user/:userId` — auth required, full lifecycle state
 - `POST /api/lifecycle/ensure-profile` — auth required, calls `ensure_user_profile()` RPC
-- `GET /api/lifecycle/:userId/auth-state` — auth required, returns `{ isDeleted, role }` for authProvider
+- `GET /api/lifecycle/:userId/auth-state` — auth required, returns `{ isDeleted, role, deletionType }` for authProvider
 
 ### Frontend services (`frontend/src/services/`)
 - `lifecycle.service.ts` — `fetchProfileByEmail`, `fetchProfileByUserId`, `checkAccountLifecycle`, `resolveAccountLifecycle`, `recreateMissingProfile`
@@ -284,6 +282,14 @@ Behavior: insert into `public.profiles` with `role = 'user'`, `deleted_at = null
 - `accounts/delete.service.ts` — `deleteAccount`, `getDeleteErrorMessage`
 
 All frontend services use `apiFetch()` from `frontend/src/lib/api.ts` — no direct Supabase calls.
+
+### Frontend hooks
+- `useAuthLifecycle.ts` — Post-auth lifecycle resolution (used by ProtectedRoute)
+- `useAuthFlow.ts` — Pre-auth email check on blur (used by Login/Signup)
+- `useDeleteAccount.ts` — React Query mutation for account deletion
+
+### Frontend providers
+- `authProvider.tsx` — Supabase auth state + deletionType + role. Self-deleted users keep `user` intact (needed for recovery API calls). Admin-deleted users are immediately signed out.
 
 ---
 
@@ -300,6 +306,7 @@ All frontend services use `apiFetch()` from `frontend/src/lib/api.ts` — no dir
 | `Not authorized to delete this account` | `Vous n'êtes pas autorisé à supprimer ce compte.` |
 | `Target email confirmation failed` | `L'adresse e-mail du compte cible ne correspond pas.` |
 | `Cannot delete another super admin` | `Vous ne pouvez pas supprimer un autre super-administrateur.` |
+| `Deleted accounts cannot perform this action` | `Vous ne pouvez pas effectuer cette action avec un compte supprimé.` |
 
 ### Recovery errors
 | RPC error | French message |
@@ -307,12 +314,18 @@ All frontend services use `apiFetch()` from `frontend/src/lib/api.ts` — no dir
 | `Account is not self-deleted` | `Ce compte ne peut pas être restauré. Il a été supprimé par un administrateur.` |
 | `Not authorized to recover this account` | `Vous ne pouvez restaurer que votre propre compte.` |
 | `Email confirmation failed` | `L'adresse e-mail ne correspond pas.` |
+| `Account is already active` | `Ce compte est déjà actif.` |
+| `Profile not found` | `Le profil n'existe pas.` |
+| `Authentication required` | `Vous devez être connecté pour restaurer votre compte.` |
 
-### Lifecycle errors
+### Lifecycle / UI messages
 | Case | French message |
 |------|---------------|
 | Profile sync failure | `Impossible de synchroniser votre profil. Veuillez contacter le support.` |
 | Admin-deleted block | `Votre compte a été désactivé par un administrateur.` |
+| Recovery success (login page) | `Compte restauré avec succès. Vous pouvez vous connecter.` |
+| Unauthenticated on `/recover` | `Connectez-vous pour restaurer votre compte.` |
+| Recovery prompt | `Il semble que votre compte a été désactivé. Souhaitez-vous le restaurer ?` |
 
 ---
 
@@ -332,6 +345,47 @@ When an account is deleted:
 | Comments | ✅ Preserved (author_id intact) |
 | `auth.users` row | ✅ Never touched |
 
+When an account is recovered:
+
+| Field | Action |
+|-------|--------|
+| `deleted_at` | → `null` |
+| `deletion_type` | → `null` |
+| `full_name` | → `null` (clears "Deleted User" placeholder — user sets a fresh name) |
+| `deleted_auth_id` | → `null` |
+| `role_id` | → Restored to default `user` if null |
+
+---
+
+## Database RPCs
+
+### `delete_account()` — ✅ Active
+```sql
+delete_account(
+  requester_email text,
+  target_user_id  uuid default null,
+  target_email    text default null
+) returns jsonb
+```
+
+### `recover_account()` — ✅ Active
+```sql
+recover_account(
+  user_id    uuid,
+  user_email text
+) returns void
+```
+Validates `deletion_type = 'self_deleted'`, validates email match, restores account, nullifies `full_name`.
+
+### `ensure_user_profile()` — ✅ Active
+```sql
+ensure_user_profile(
+  user_id    uuid,
+  user_email text
+) returns void
+```
+Inserts into `public.profiles` with `role = 'user'`, `deleted_at = null` if no profile exists for `user_id`.
+
 ---
 
 ## Key Design Decisions
@@ -342,37 +396,55 @@ Preserves content history, enables recovery, maintains moderation audit trail. H
 **Why not touch `auth.users`?**
 Deleting from `auth.users` corrupts Google OAuth re-registration. Application-layer access control via `is_active_user()` RLS is sufficient.
 
-**Why do deleted users still have read access?**
-By design. Deleted and unauthenticated users have identical read-only access — they can view posts and content but cannot write. This is consistent with the guest experience and avoids special-casing deleted users in the UI.
+**Why AccountGate at the App level?**
+Single source of truth for deleted-user gating. Prevents the "Google OAuth bypass" where a deleted user's session survives OAuth redirect and lands on an unguarded public page. AccountGate catches all paths.
+
+**Why keep `user` intact for self-deleted users?**
+The recovery API (`POST /api/accounts/recover`) requires authentication. Self-deleted users must have a valid session to call it. Admin-deleted users are signed out immediately (no recovery path exists).
+
+**Why sign out after recovery?**
+Recovery changes the profile state in the database, but the frontend's `authProvider` still has `deletionType = 'self_deleted'` cached. Signing out resets auth state cleanly; logging back in fetches the fresh active state naturally.
+
+**Why `full_name = null` on recovery?**
+The delete flow sets `full_name` to `"Deleted User"`. On recovery, we nullify it so the user sets a fresh name via their profile. Preserving "Deleted User" would be confusing.
 
 **Why is admin-delete permanent in MVP?**
 A super admin disabling an account is an intentional moderation action, not an accident. Recovery path for admin-deleted accounts adds complexity and an appeals workflow that is out of scope for MVP.
 
-**Why centralized lifecycle hooks?**
-Single source of truth for access control. Prevents the same `if (profile.deleted_at)` check being scattered across 10+ components with inconsistent behavior.
-
 **Why Resend for email?**
-Simple REST API, first-class TypeScript SDK, generous free tier (3,000/month), no SMTP setup. Fits the backend's ElysiaJS + Node stack cleanly.
+Simple REST API, first-class TypeScript SDK, generous free tier (3,000/month), no SMTP setup. Fits the backend's ElysiaJS + Node stack cleanly. Gracefully degrades when API key is missing.
+
+**Why fire-and-forget emails?**
+Email failures must never block account operations (delete, recover). If Resend is down or the API key is missing, the user's account operation still succeeds.
 
 ---
 
 ## Testing Checklist
 
-- [ ] Self-delete flow end-to-end (email validation, RPC, sign out, redirect)
+- [ ] Self-delete flow end-to-end (email validation, RPC, sign out, redirect to /login)
 - [ ] Admin-delete flow end-to-end (2-email validation, RPC, list update)
 - [ ] Cannot delete another super admin
-- [ ] Self-deleted user redirected to `/recover` from Login
-- [ ] Admin-deleted user blocked at `/login` with French message
-- [ ] Recovery flow end-to-end (email validation, RPC, redirect home)
+- [ ] Self-deleted email/password user: wrong password → error, correct password → /recover
+- [ ] Self-deleted Google user: OAuth success → /recover
+- [ ] Self-deleted user sees recovery prompt, not "Accès refusé"
+- [ ] Self-deleted user with valid session cannot access home (AccountGate → /recover)
+- [ ] Self-deleted user Navbar shows "Se connecter", not "Mon compte"
+- [ ] Admin-deleted user signed out immediately → blocked at login on blur
+- [ ] Recovery flow end-to-end → sign out → green success banner on login
+- [ ] Recovery page shows login prompt when unauthenticated
 - [ ] Admin-deleted account cannot use recovery flow
+- [ ] Recovered account: full_name is null (not "Deleted User")
+- [ ] Recovered account: can log in normally as active user
+- [ ] "Annuler" on recovery page → sign out → /login
 - [ ] ProtectedRoute blocks unauthenticated users
 - [ ] ProtectedRoute redirects deleted users correctly
 - [ ] Missing profile auto-recreated via `ensure_user_profile()`
+- [ ] Guest can browse home, posts, post detail
+- [ ] Guest navbar shows "Se connecter"
+- [ ] "Entrer en tant qu'invité" on login page → home without auth
 - [ ] Session cleared after self-delete
-- [ ] Email sent after self-delete
-- [ ] Email sent after admin-delete
-- [ ] Email sent after recovery
+- [ ] Session cleared after admin-delete detection
+- [ ] Email silently skipped when RESEND_API_KEY not set
 - [ ] All error messages display in French
 - [ ] Modal keyboard support (Escape, Tab navigation)
-- [ ] Focus management in modals
 - [ ] Mobile layout for all modals and recovery page

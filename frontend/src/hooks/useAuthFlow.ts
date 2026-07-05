@@ -20,14 +20,7 @@ export const useAuthFlow = (): UseAuthFlowResult => {
         const profile = await fetchProfileByEmail(email)
         const lifecycle = checkAccountLifecycle(profile)
 
-        // If self-deleted, offer recovery
-        if (lifecycle.state === 'self_deleted') {
-          await resetLocalSession()
-          navigate('/recover', { state: { email } })
-          return lifecycle
-        }
-
-        // If admin-deleted, block access
+        // Admin-deleted: block immediately, no login attempt
         if (lifecycle.state === 'admin_deleted') {
           await resetLocalSession()
           navigate('/login', {

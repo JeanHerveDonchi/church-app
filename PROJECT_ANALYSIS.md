@@ -1,6 +1,6 @@
 # Project Analysis: Church Library Web App (THC Global)
 
-**Last updated:** 2026-06-29
+**Last updated:** 2026-07-03
 
 ---
 
@@ -19,18 +19,23 @@ Auth via Google OAuth + email/password (Supabase). Admins publish content (text,
 church-app/
 ├── pnpm-workspace.yaml
 ├── package.json              ← workspace root (pnpm dev runs both)
+├── ARCHITECTURE_DELETE_RECOVER.md  ← Account lifecycle architecture doc
+├── PROJECT_ANALYSIS.md        ← This file
+├── README.md
 ├── .gitignore
 ├── frontend/                 ← React SPA
 │   ├── src/
-│   │   ├── lib/api.ts        ← apiFetch() helper (auto-attaches JWT)
-│   │   ├── lib/supabase.ts   ← auth-only Supabase client
+│   │   ├── App.tsx            ← AccountGate + all route definitions
+│   │   ├── lib/api.ts         ← apiFetch() helper (auto-attaches JWT)
+│   │   ├── lib/supabase.ts    ← auth-only Supabase client
 │   │   ├── providers/
-│   │   │   ├── authProvider.tsx
-│   │   │   └── supabaseClient.ts
+│   │   │   ├── authProvider.tsx    ← Auth state + deletionType + role
+│   │   │   └── supabaseClient.ts   ← Supabase JS client singleton
 │   │   ├── hooks/
-│   │   │   ├── useAuthFlow.ts
-│   │   │   ├── useAuthLifecycle.ts
-│   │   │   └── useMyProfile.ts
+│   │   │   ├── useAuthFlow.ts      ← Pre-auth email lifecycle check (Login/Signup)
+│   │   │   ├── useAuthLifecycle.ts ← Post-auth lifecycle resolution (ProtectedRoute)
+│   │   │   ├── useDeleteAccount.ts ← React Query mutation for account deletion
+│   │   │   └── useRequireFullName.ts
 │   │   ├── services/
 │   │   │   ├── accounts/delete.service.ts
 │   │   │   ├── lifecycle.service.ts
@@ -38,26 +43,33 @@ church-app/
 │   │   │   ├── posts/post.service.ts
 │   │   │   └── comments/comments.service.ts
 │   │   ├── components/
-│   │   │   ├── ProtectedRoute.tsx
-│   │   │   ├── AccountDeletionDialog.tsx
+│   │   │   ├── ProtectedRoute.tsx       ← Route guard (lifecycle check)
+│   │   │   ├── AccountDeletionDialog.tsx ← Multi-step delete modal
 │   │   │   ├── ConfirmDialog.tsx
 │   │   │   └── Navbar.tsx
 │   │   └── pages/
-│   │       ├── Login.tsx
-│   │       ├── Signup.tsx
-│   │       ├── Profile.tsx
-│   │       ├── ManageUsers.tsx
-│   │       ├── RecoverAccount.tsx
+│   │       ├── Home.tsx
+│   │       ├── Login.tsx            ← Google + email/password, guest entry
+│   │       ├── Signup.tsx           ← Email lifecycle check on blur
+│   │       ├── Profile.tsx          ← Self-delete trigger
+│   │       ├── ManageUsers.tsx      ← Admin-delete trigger
+│   │       ├── RecoverAccount.tsx   ← Recovery page for self-deleted users
 │   │       └── ...
 │   └── .env                  ← VITE_SUPABASE_* (auth only) + VITE_API_BASE_URL
 └── backend/
     ├── src/
     │   ├── index.ts          ← Elysia app, port 3000
-    │   ├── lib/supabase.ts   ← anon client + createUserClient(token)
+    │   ├── lib/
+    │   │   ├── supabase.ts   ← anon client + createUserClient(token)
+    │   │   └── email.ts      ← Resend client + sendEmail() (fire-and-forget)
     │   ├── middleware/auth.ts ← JWT validation guard
+    │   ├── templates/
+    │   │   ├── account-deleted.ts
+    │   │   ├── account-disabled.ts
+    │   │   └── account-recovered.ts
     │   ├── routes/
-    │   │   ├── accounts.ts
-    │   │   ├── lifecycle.ts
+    │   │   ├── accounts.ts   ← /api/accounts/delete + /api/accounts/recover
+    │   │   ├── lifecycle.ts  ← /api/lifecycle/* (auth-state, by-email, user, ensure-profile)
     │   │   ├── profiles.ts
     │   │   ├── posts.ts
     │   │   └── comments.ts
@@ -67,7 +79,7 @@ church-app/
     │       ├── recovery.service.ts
     │       ├── posts/post.service.ts
     │       └── comments/comments.service.ts
-    └── .env                  ← SUPABASE_URL + SUPABASE_ANON_KEY (gitignored)
+    └── .env                  ← SUPABASE_URL, SUPABASE_ANON_KEY, (optional) RESEND_*
 ```
 
 ### Security Model
@@ -83,12 +95,12 @@ church-app/
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | `/health` | — | Health check |
-| POST | `/api/accounts/delete` | ✅ | Soft-delete account (RPC) |
-| POST | `/api/accounts/recover` | ✅ | Recover self-deleted account (RPC) |
+| POST | `/api/accounts/delete` | ✅ | Soft-delete account (RPC) + send email |
+| POST | `/api/accounts/recover` | ✅ | Recover self-deleted account (RPC) + send email |
 | GET | `/api/lifecycle/by-email/:email` | — | Pre-auth email lifecycle check |
 | GET | `/api/lifecycle/user/:userId` | ✅ | Full lifecycle state for user |
 | POST | `/api/lifecycle/ensure-profile` | ✅ | Auto-recreate missing profile |
-| GET | `/api/lifecycle/:userId/auth-state` | ✅ | `{ isDeleted, role }` for authProvider |
+| GET | `/api/lifecycle/:userId/auth-state` | ✅ | `{ isDeleted, role, deletionType }` for authProvider |
 | GET | `/api/profiles/me` | ✅ | Current user's profile |
 | PUT | `/api/profiles/me` | ✅ | Update name / avatar |
 | GET | `/api/profiles/me/post-count` | ✅ | Post count (RPC) |
@@ -113,8 +125,8 @@ church-app/
 | State | `deleted_at` | `deletion_type` | User experience |
 |-------|-------------|-----------------|-----------------|
 | ACTIVE | NULL | NULL | Full access |
-| SELF_DELETED | SET | `self_deleted` | Redirected to `/recover`; can restore |
-| ADMIN_DELETED | SET | `admin_deleted` | Redirected to `/login` with block message; no recovery |
+| SELF_DELETED | SET | `self_deleted` | Redirected to `/recover` by AccountGate; can restore account |
+| ADMIN_DELETED | SET | `admin_deleted` | Signed out immediately by authProvider; blocked from login |
 | MISSING_PROFILE | n/a | n/a | Auto-recreated via `ensure_user_profile()` RPC |
 
 ### Delete Flows — ✅ Working end-to-end
@@ -124,49 +136,57 @@ church-app/
 | Self-delete | `Profile.tsx` → `AccountDeletionDialog` → `/api/accounts/delete` → sign out → `/login` | ✅ |
 | Admin delete | `ManageUsers.tsx` → `AccountDeletionDialog` → `/api/accounts/delete` → remove from list | ✅ |
 
-### Recovery Flow — ✅ Built, ❌ Not wired
+### Recovery Flow — ✅ Fully wired
 
-| File | What it does | Status |
-|------|-------------|--------|
-| `backend/src/routes/accounts.ts` | `POST /api/accounts/recover` route | ✅ Built |
-| `backend/src/services/recovery.service.ts` | Calls `recover_account()` RPC | ✅ Built |
-| `frontend/src/services/recovery.service.ts` | Calls `/api/accounts/recover` | ✅ Built |
-| `frontend/src/pages/RecoverAccount.tsx` | Recovery UI, email field, redirect home | ✅ Built, ❌ Unreachable |
-| `frontend/src/hooks/useAuthFlow.ts` | Pre-auth email check → redirects to `/recover` | ✅ Built, ❌ Not used |
-| `frontend/src/hooks/useAuthLifecycle.ts` | Post-auth check, canAccess, shouldShowRecovery | ✅ Built, ❌ Not used |
-| `frontend/src/components/ProtectedRoute.tsx` | Wraps protected pages, enforces lifecycle | ✅ Built, ❌ Not used |
+| Component | Role | Status |
+|-----------|------|--------|
+| `RecoverAccount.tsx` | Recovery UI — prompt, restore button, cancel | ✅ Built + wired |
+| `AccountGate` (App.tsx) | Catches all authenticated self-deleted users → redirects to `/recover` | ✅ Built + wired |
+| `authProvider.tsx` | Detects self-deleted, keeps session alive for recovery API | ✅ Built + wired |
+| `useAuthFlow.ts` | Pre-auth email check on Login/Signup blur (admin_deleted blocks, self_deleted on signup → /recover) | ✅ Built + wired |
+| `ProtectedRoute.tsx` | Post-auth lifecycle check for protected pages (profile, manage-users, etc.) | ✅ Built + wired |
+| `Navbar.tsx` | Shows "Se connecter" for self-deleted users (prevents navigation loops) | ✅ Built + wired |
+
+### Email Notifications — ✅ Built, gracefully degraded
+
+| Template | Trigger | Status |
+|----------|---------|--------|
+| `accountDeletedTemplate()` | Self-delete confirmed | ✅ Fire-and-forget, skips silently when key missing |
+| `accountDisabledTemplate()` | Admin-delete | ✅ Fire-and-forget, skips silently when key missing |
+| `accountRecoveredTemplate()` | Recovery confirmed | ✅ Fire-and-forget, skips silently when key missing |
+
+### Login/Signup — ✅ Fully wired
+
+| Feature | Status |
+|---------|--------|
+| Google OAuth (`signInWithOAuth`) | ✅ |
+| Email/password (`signInWithPassword`) | ✅ |
+| Admin-deleted email blocked on blur (Login + Signup) | ✅ |
+| Self-deleted email → /recover on Signup blur | ✅ |
+| Self-deleted email → login proceeds (AccountGate catches after auth) | ✅ |
+| "Entrer en tant qu'invité" link on login → home without auth | ✅ |
+| Recovery success → green banner on login page | ✅ |
 
 ---
 
-## Pending Tasks (Wiring Gap)
+## Routing Architecture
 
-Everything is built. These are the remaining wire-up tasks before the feature is fully live:
-
-### 1. Register `/recover` route in `App.tsx`
-`RecoverAccount.tsx` is unreachable. The `*` catch-all redirects to `/` first.
-- **File:** `frontend/src/App.tsx`
-- **Fix:** Add `<Route path="/recover" element={<RecoverAccount />} />`
-
-### 2. Wrap protected routes with `<ProtectedRoute>`
-Deleted users with a still-valid JWT can reach protected pages.
-- **File:** `frontend/src/App.tsx`
-- **Fix:** Wrap `/profile`, `/manage-users`, `/posts/create`, `/posts/post/:id/edit` with `<ProtectedRoute>`
-
-### 3. Wire `useAuthFlow` into Login and Signup
-Pre-auth lifecycle check is built but never called. A self-deleted user who tries to log in won't be redirected to `/recover`.
-- **Files:** `frontend/src/pages/Login.tsx`, `frontend/src/pages/Signup.tsx`
-- **Fix:** Call `useAuthFlow().checkEmailLifecycle(email)` on blur / before submit
-
-### 4. Verify database RPCs exist in Supabase
-| RPC | Status |
-|-----|--------|
-| `delete_account(requester_email, target_user_id?, target_email?)` | ✅ Confirmed working |
-| `recover_account()` | ⚠️ Must be verified / created |
-| `ensure_user_profile()` | ⚠️ Must be verified / created |
-| `get_my_post_count()` | ⚠️ Must be verified / created |
-
-### 5. Update `README.md`
-README still says "Account Recovery = v2 feature." Recovery ships in this sprint — update to reflect reality.
+```
+App.tsx
+├── <AccountGate>                          ← Global lifecycle gate
+│   └── <Routes>
+│       ├── / (Home)                       ← Public
+│       ├── /login                         ← Public (always allowed for AccountGate)
+│       ├── /signup                        ← Public (always allowed for AccountGate)
+│       ├── /recover                       ← Public (always allowed for AccountGate)
+│       ├── /posts                         ← Public
+│       ├── /posts/:userId                 ← Public
+│       ├── /posts/post/:postId            ← Public
+│       ├── /profile (ProtectedRoute)      ← Auth + active account required
+│       ├── /manage-users (ProtectedRoute) ← Auth + super_admin required
+│       ├── /posts/create (ProtectedRoute) ← Auth + active account required
+│       └── /posts/post/:postId/edit (ProtectedRoute) ← Auth + active account required
+```
 
 ---
 
@@ -182,6 +202,7 @@ README still says "Account Recovery = v2 feature." Recovery ships in this sprint
 | Auth | Supabase (browser-only) |
 | Backend framework | ElysiaJS 1.x + @elysiajs/node |
 | Backend runtime | Node.js + tsx |
+| Email | Resend (optional, fire-and-forget, gracefully degrades) |
 | Package manager | pnpm (workspace monorepo) |
 | Database | Supabase (PostgreSQL + RLS) |
 
@@ -203,7 +224,13 @@ cd frontend && pnpm dev   # vite dev server → port 5173
 ## Key Design Decisions
 
 - **`auth.users` is never touched on delete** — only `public.profiles` is soft-deleted. Prevents OAuth corruption.
-- **`authProvider.tsx` does NOT redirect deleted users** — it detects `isDeleted` but defers all redirects to `useAuthLifecycle`. This is by design.
+- **AccountGate at App level** — single global gating prevents any deleted authenticated user from accessing unauthorized pages. Eliminates the "Google OAuth bypass" where a deleted user's session survives OAuth redirect and lands on an unguarded page.
+- **Self-deleted users keep their session** — `authProvider` sets `deletionType = 'self_deleted'` but does NOT sign out. The session is needed for the recovery API call.
+- **Admin-deleted users are signed out immediately** — `authProvider` calls `supabase.auth.signOut()` on detection. No recovery path exists, so no session is needed.
+- **Recovery success signs out + redirects to login** — avoids stale `deletionType` in authProvider. User logs in fresh with active state.
 - **Role is cached per user ID** (`cachedRoleRef`) to avoid redundant backend queries on auth state changes.
 - **RLS uses `is_active_user()`** — `deleted_at IS NULL` — to block writes for deleted accounts even if a JWT is still valid.
 - **anon key stays public by design** — the Supabase anon key is designed to be safe in the browser for auth-only operations. The security goal is preventing direct DB queries from the browser, not hiding the key itself.
+- **Email is fire-and-forget with graceful degradation** — `sendEmail()` silently returns when no `RESEND_API_KEY` is set. Email failures never block account operations.
+- **`full_name` is nullified on recovery** — the delete flow sets it to `"Deleted User"`. On recovery, nullifying it lets the user set a fresh name.
+- **Navbar treats deleted users as guests** — shows "Se connecter" instead of "Mon compte" when `deletionType` is set, preventing navigation loops to `/profile`.
